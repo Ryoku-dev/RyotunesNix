@@ -134,6 +134,18 @@ Item {
         visible: root.open
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: root.close()
+
+        // The menu sits on the window, so a list scrolling underneath would leave it hanging over
+        // a row it no longer belongs to. The wheel closes it instead.
+        WheelHandler {
+            enabled: root.open
+            // WheelHandler is the one handler Qt narrows to PointerDevice.Mouse, and the Wayland
+            // plugin stamps wheel events with the seat's primary pointing device, which is reported
+            // as a touchpad on machines that have no touchpad at all. Left on the default this
+            // never fires, with no warning to say so.
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+            onWheel: root.close()
+        }
     }
 
     Rectangle {
