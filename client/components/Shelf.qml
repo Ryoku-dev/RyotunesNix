@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import Ryoku.Ui as RU
 import "../"
+import "../lib/browse.js" as Browse
 
 // A shelf (spec section 4): a SectionHeading over a horizontally flicking row of MediaCards, gap 16,
 // each card revealed with a Ryoku.Ui.Entrance stagger. Fed either a feed `section`
@@ -63,6 +64,8 @@ ColumnLayout {
                         id: entrance
                         index: cell.index
                         MediaCard {
+                            id: card
+                            onMenuRequested: (sx, sy) => root.openCardMenu(card, sx, sy)
                             item: cell.modelData
                             cardWidth: Style.cardW
                         }
@@ -71,4 +74,31 @@ ColumnLayout {
             }
         }
     }
+
+
+    // One menu for every card in this container. A song card gets the track menu; an album, artist
+    // or playlist is not a track, so it gets the actions that do mean something for it, run through
+    // the card's own logic rather than a second copy of it.
+    function openCardMenu(card, sx, sy) {
+        if (!card || !card.item)
+            return;
+        var it = card.item;
+        var p = cardMenu.mapFromItem(null, sx, sy);
+        if (it.kind === "song") {
+            cardMenu.customItems = null;
+            cardMenu.song = Browse.asSong(it);
+        } else {
+            cardMenu.song = null;
+            cardMenu.customItems = [
+                { icon: "play", label: "Play", danger: false, act: () => card.playNow() },
+                { icon: "arrow-right", label: "Open", danger: false, act: () => card.open() },
+                { icon: "dashboard", label: "Add to shortcuts", danger: false,
+                  act: () => Playback.toast(Personal.addPick(it) ? "Added to shortcuts" : "Already in shortcuts", "success") }
+            ];
+        }
+        cardMenu.openAt(p.x, p.y);
+    }
+
+    Menu { id: cardMenu }
+
 }
