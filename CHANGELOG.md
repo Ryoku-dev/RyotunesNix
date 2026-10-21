@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Settings ▸ Downloads can now save tracks as FLAC, for players and libraries that expect FLAC files. It adds no further lossy compression but cannot make a YouTube or SoundCloud source better than it is, and files are several times larger. Cover art and lyrics are embedded as with the other formats. Tracks already saved in another format are not downloaded again.
+
 ## v1.2.3 - 2026-10-19
 
 - Void Linux support: `scripts/install-void.sh` and Settings → About → Update now install the release as an xbps package. See docs/INSTALL-VOID.md.
