@@ -36,13 +36,15 @@ const INTERRUPTED_MSG: &str =
 const JOB_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 
 /// Container/codec choice. `Original` keeps the source stream (no re-encode); `Mp3`/`Opus`
-/// transcode with ffmpeg.
+/// transcode with ffmpeg. `Flac` decodes the source and stores it without another lossy encode;
+/// it cannot restore what the source lost, at several times the file size.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DownloadFormat {
     Original,
     Mp3,
     Opus,
+    Flac,
 }
 
 /// Where a job is in its lifecycle. `queued`/`downloading` are active (cap-counted, lifecycle-busy);
@@ -1115,6 +1117,16 @@ fn build_command(target: &str, staging: &Path, settings: &DownloadSettings) -> C
         DownloadFormat::Opus => {
             command.args(["--audio-format", "opus", "--audio-quality", "160K"]);
         }
+        DownloadFormat::Flac => {
+            // Every source here is lossy: past 16 bits a decode carries only noise, which FLAC
+            // cannot compress, so 24-bit output is close to twice the size for nothing.
+            command.args([
+                "--audio-format",
+                "flac",
+                "--postprocessor-args",
+                "ExtractAudio:-sample_fmt s16",
+            ]);
+        }
     }
     if settings.embed_metadata {
         command.arg("--embed-metadata");
@@ -1403,6 +1415,18 @@ struct Persisted {
     jobs: Vec<DownloadJob>,
 }
 
+fn fall_back_unknown_format(settings: &mut Value) {
+    let Some(format) = settings.get_mut("format") else {
+        return;
+    };
+    let Some(name) = format.as_str() else {
+        return;
+    };
+    if !matches!(name, "original" | "mp3" | "opus" | "flac") {
+        *format = Value::String("original".into());
+    }
+}
+
 fn load(directory: &Path) -> anyhow::Result<(DownloadSettings, Vec<DownloadJob>)> {
     let path = directory.join(STATE_FILE);
     // An interrupted atomic write is never authoritative.
@@ -1417,7 +1441,18 @@ fn load(directory: &Path) -> anyhow::Result<(DownloadSettings, Vec<DownloadJob>)
     let mut bytes = Vec::new();
     file.take(8 * 1024 * 1024 + 1).read_to_end(&mut bytes)?;
     anyhow::ensure!(bytes.len() <= 8 * 1024 * 1024, "download history exceeds its safe size limit");
-    let mut stored: Persisted = serde_json::from_slice(&bytes)?;
+    let mut value: Value = serde_json::from_slice(&bytes)?;
+    if let Some(settings) = value.get_mut("settings") {
+        fall_back_unknown_format(settings);
+    }
+    if let Some(jobs) = value.get_mut("jobs").and_then(Value::as_array_mut) {
+        for job in jobs {
+            if let Some(settings) = job.get_mut("settings") {
+                fall_back_unknown_format(settings);
+            }
+        }
+    }
+    let mut stored: Persisted = serde_json::from_value(value)?;
     stored.settings.workers = stored.settings.workers.clamp(1, 4);
     anyhow::ensure!(
         Path::new(&stored.settings.path).is_absolute(),
@@ -1735,6 +1770,44 @@ mod tests {
             collection: None,
             collection_kind: None,
         }
+    }
+
+    #[test]
+    fn flac_asks_the_downloader_for_16_bit_flac_without_a_bitrate() {
+        let directory = Temp::new();
+        let mut flac = settings(&directory.0, 1);
+        flac.format = DownloadFormat::Flac;
+        let command =
+            build_command("https://www.youtube.com/watch?v=jNQXAC9IVRw", &directory.0, &flac);
+        let args: Vec<String> =
+            command.as_std().get_args().map(|arg| arg.to_string_lossy().into_owned()).collect();
+        let at = args.iter().position(|arg| arg == "--audio-format").unwrap();
+        assert_eq!(args[at + 1], "flac");
+        assert!(args.iter().any(|arg| arg == "ExtractAudio:-sample_fmt s16"));
+        // A lossless encoder has no bitrate to aim for.
+        assert!(!args.iter().any(|arg| arg == "--audio-quality"));
+        assert_eq!(serde_json::to_value(DownloadFormat::Flac).unwrap(), json!("flac"));
+        assert_eq!(
+            serde_json::from_value::<DownloadFormat>(json!("flac")).unwrap(),
+            DownloadFormat::Flac
+        );
+    }
+
+    #[test]
+    fn unknown_saved_formats_fall_back_without_losing_download_history() {
+        let directory = Temp::new();
+        let mut saved = json!({
+            "settings": settings(&directory.0, 1),
+            "jobs": [job(&directory.0)],
+        });
+        saved["settings"]["format"] = json!("future-codec");
+        saved["jobs"][0]["settings"]["format"] = json!("future-codec");
+        std::fs::write(directory.0.join(STATE_FILE), serde_json::to_vec(&saved).unwrap()).unwrap();
+
+        let (loaded, jobs) = load(&directory.0).unwrap();
+        assert_eq!(loaded.format, DownloadFormat::Original);
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(jobs[0].settings.format, DownloadFormat::Original);
     }
 
     #[test]

@@ -46,7 +46,7 @@ Item {
         }
         if (it.kind === "album") {
             Daemon.call("get_album", { id: it.id })
-                .then((a) => Daemon.call("play_playlist", { items: a.items, sourceId: a.playlistId, sourceName: it.title }))
+                .then((a) => Daemon.call("play_playlist", { items: a.items, sourceId: a.playlistId, sourceName: it.title, shuffle: false }))
                 .catch(() => Playback.toast("Could not play — try opening it", "error"));
         } else {
             Daemon.call("get_playlist", { id: it.id })
@@ -54,16 +54,27 @@ Item {
                     items: p.items,
                     sourceId: Ids.isSmartPlaylistId(it.id) ? undefined : it.id,
                     sourceName: it.title,
-                    continuation: p.continuation
+                    continuation: p.continuation,
+                    shuffle: false
                 }))
                 .catch(() => Playback.toast("Could not play — try opening it", "error"));
         }
     }
 
+    signal menuRequested(real sx, real sy)
+
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.open()
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onClicked: (mouse) => {
+            if (mouse.button === Qt.RightButton) {
+                let p = mapToItem(null, mouse.x, mouse.y);
+                root.menuRequested(p.x, p.y);
+                return;
+            }
+            root.open();
+        }
     }
 
     ColumnLayout {

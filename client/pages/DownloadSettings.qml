@@ -175,7 +175,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 spacing: Style.sp(2)
                 Repeater {
-                    model: [{ key: "original", label: "Original" }, { key: "mp3", label: "MP3" }, { key: "opus", label: "Opus" }]
+                    model: [{ key: "original", label: "Original" }, { key: "mp3", label: "MP3" }, { key: "opus", label: "Opus" }, { key: "flac", label: "FLAC" }]
                     delegate: Choice {
                         required property var modelData
                         text: modelData.label
@@ -189,6 +189,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 text: root.formatInput === "original" ? "Best available source audio without lossy conversion. Fastest and lightest."
                     : root.formatInput === "mp3" ? "MP3 for broad compatibility. Conversion targets 320 kbps but cannot improve the source quality."
+                    : root.formatInput === "flac" ? "FLAC for players and libraries that expect FLAC files. No further lossy compression is applied, but the audio is only as good as the lossy source, and files are several times larger."
                     : "Opus for compact, efficient audio. Conversion targets 160 kbps; existing Opus audio is kept without re-encoding."
                 color: Tokens.inkMuted; font.family: Style.fontUi; font.pixelSize: Style.fs.sm; wrapMode: Text.WordWrap
             }
