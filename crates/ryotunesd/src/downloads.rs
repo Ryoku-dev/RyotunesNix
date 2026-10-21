@@ -1415,6 +1415,18 @@ struct Persisted {
     jobs: Vec<DownloadJob>,
 }
 
+fn fall_back_unknown_format(settings: &mut Value) {
+    let Some(format) = settings.get_mut("format") else {
+        return;
+    };
+    let Some(name) = format.as_str() else {
+        return;
+    };
+    if !matches!(name, "original" | "mp3" | "opus" | "flac") {
+        *format = Value::String("original".into());
+    }
+}
+
 fn load(directory: &Path) -> anyhow::Result<(DownloadSettings, Vec<DownloadJob>)> {
     let path = directory.join(STATE_FILE);
     // An interrupted atomic write is never authoritative.
@@ -1429,7 +1441,18 @@ fn load(directory: &Path) -> anyhow::Result<(DownloadSettings, Vec<DownloadJob>)
     let mut bytes = Vec::new();
     file.take(8 * 1024 * 1024 + 1).read_to_end(&mut bytes)?;
     anyhow::ensure!(bytes.len() <= 8 * 1024 * 1024, "download history exceeds its safe size limit");
-    let mut stored: Persisted = serde_json::from_slice(&bytes)?;
+    let mut value: Value = serde_json::from_slice(&bytes)?;
+    if let Some(settings) = value.get_mut("settings") {
+        fall_back_unknown_format(settings);
+    }
+    if let Some(jobs) = value.get_mut("jobs").and_then(Value::as_array_mut) {
+        for job in jobs {
+            if let Some(settings) = job.get_mut("settings") {
+                fall_back_unknown_format(settings);
+            }
+        }
+    }
+    let mut stored: Persisted = serde_json::from_value(value)?;
     stored.settings.workers = stored.settings.workers.clamp(1, 4);
     anyhow::ensure!(
         Path::new(&stored.settings.path).is_absolute(),
@@ -1768,6 +1791,23 @@ mod tests {
             serde_json::from_value::<DownloadFormat>(json!("flac")).unwrap(),
             DownloadFormat::Flac
         );
+    }
+
+    #[test]
+    fn unknown_saved_formats_fall_back_without_losing_download_history() {
+        let directory = Temp::new();
+        let mut saved = json!({
+            "settings": settings(&directory.0, 1),
+            "jobs": [job(&directory.0)],
+        });
+        saved["settings"]["format"] = json!("future-codec");
+        saved["jobs"][0]["settings"]["format"] = json!("future-codec");
+        std::fs::write(directory.0.join(STATE_FILE), serde_json::to_vec(&saved).unwrap()).unwrap();
+
+        let (loaded, jobs) = load(&directory.0).unwrap();
+        assert_eq!(loaded.format, DownloadFormat::Original);
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(jobs[0].settings.format, DownloadFormat::Original);
     }
 
     #[test]

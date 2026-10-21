@@ -5,7 +5,7 @@
 - Playlist and album Play actions now start in sequence, while clicking a track preserves the current shuffle mode. Active shuffle and repeat controls follow the live Ryoku accent.
 - Icon buttons now show their labels on hover and expose the same labels to assistive technology.
 - Tracks and browse cards now open their actions on right-click. Context menus stay inside the window and close on outside clicks or scrolling.
-- Settings ▸ Downloads can now save tracks as FLAC, for players and libraries that expect FLAC files. It adds no further lossy compression but cannot make a YouTube or SoundCloud source better than it is, and files are several times larger. Cover art and lyrics are embedded as with the other formats. Tracks already saved in another format are not downloaded again.
+- Settings ▸ Downloads can now save tracks as FLAC, for players and libraries that expect FLAC files. It adds no further lossy compression but cannot make a YouTube or SoundCloud source better than it is, and files are several times larger. Cover art and lyrics are embedded as with the other formats. Tracks already saved in another format are not downloaded again. Saved formats from newer Ryotunes versions fall back to Original instead of preventing the daemon from starting.
 
 ## v1.2.3 - 2026-10-19
 
