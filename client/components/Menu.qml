@@ -20,7 +20,7 @@ Item {
     // cover everything a click can land on, and a list that clips its children would otherwise cut
     // the panel off. Callers map the press into this item's space with mapFromItem(null, ...),
     // which stays correct because the window's content item is the scene.
-    parent: root.Window.contentItem ? root.Window.contentItem : undefined
+    parent: root.Window.window ? root.Window.window.contentItem : undefined
     anchors.fill: parent
     z: 150
 
