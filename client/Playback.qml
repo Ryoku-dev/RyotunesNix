@@ -80,7 +80,7 @@ Singleton {
             var fx = PB.applyEvent(root, name, data);
             if (fx) {
                 if (fx.toast) root.toast(fx.toast, fx.kind);
-                // The spotify-auth url step asks the browser to open the OAuth page.
+                // Sign-in events can ask the browser to open their approval page.
                 if (fx.openUrl) Quickshell.execDetached(["xdg-open", fx.openUrl]);
             }
         }

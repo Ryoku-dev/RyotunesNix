@@ -100,6 +100,7 @@ TestCase {
         compare(s.tidal.code, "ABCD");
         compare(s.tidal.url, "https://link.tidal.com/ABCD");
         verify(waiting && waiting.toast.indexOf("ABCD") >= 0);
+        compare(waiting.openUrl, "https://link.tidal.com/ABCD");
 
         // The ceiling rides along on the sign-in, because nothing re-reads it afterwards: without
         // it the settings page says the best reachable quality is unknown for the whole session.
