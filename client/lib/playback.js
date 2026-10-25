@@ -156,7 +156,10 @@ function applyEvent(s, name, data) {
             s.tidal = { signedIn: false, name: null, quality: null, hasCredentials: true,
                 code: (data && data.code) ? data.code : "",
                 url: (data && data.url) ? data.url : "", error: "" };
-            return { toast: "Enter " + ((data && data.code) ? data.code : "the code") + " at " + ((data && data.url) ? data.url : "link.tidal.com") + " to finish signing in", kind: "info" };
+            return {
+                toast: "Enter " + ((data && data.code) ? data.code : "the code") + " at " + ((data && data.url) ? data.url : "link.tidal.com") + " to finish signing in",
+                kind: "info", openUrl: s.tidal.url
+            };
         }
         if (td === "expired") {
             s.tidal = { signedIn: false, name: null, quality: null, hasCredentials: true,
