@@ -1,0 +1,38 @@
+name: RyotunesNix Native Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+
+      - name: Validate flake
+        run: nix flake show
+
+      - name: Build native Ryotunes
+        run: nix build .#ryotunes --no-link -L
+
+      - name: Verify native launcher
+        run: |
+          set -euo pipefail
+
+          out="$(nix path-info .#ryotunes)"
+
+          test -x "$out/bin/ryotunes"
+          test -x "$out/bin/ryotunesd"
+          test -x "$out/bin/ryotunes-cli"
+          test -f "$out/share/ryotunes/client/shell.qml"
+
+          grep -Fq '/bin/qs' "$out/bin/ryotunes"

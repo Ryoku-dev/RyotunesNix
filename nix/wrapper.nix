@@ -37,16 +37,15 @@ symlinkJoin {
   allowSubstitutes = true;
 
   postBuild = ''
-    makeWrapper ${quickshell}/bin/qs "$out/bin/ryotunes-qml" \
+    # The desktop entry and default flake app must launch native Quickshell.
+    makeWrapper ${quickshell}/bin/qs "$out/bin/ryotunes" \
       --add-flags "-p ${ryotunesUnwrapped}/share/ryotunes/client" \
       --prefix QML_IMPORT_PATH : "${qmlImports}" \
       --prefix QML2_IMPORT_PATH : "${qmlImports}" \
       --prefix QT_PLUGIN_PATH : "${qtPlugins}" \
       --prefix PATH : "${runtimePath}"
 
-    rm "$out/bin/ryotunes"
-    makeWrapper ${ryotunesUnwrapped}/bin/ryotunes "$out/bin/ryotunes" \
-      --prefix PATH : "$out/bin:${runtimePath}"
+    ln -s ryotunes "$out/bin/ryotunes-qml"
 
     rm "$out/bin/ryotunesd"
     makeWrapper ${ryotunesUnwrapped}/bin/ryotunesd "$out/bin/ryotunesd" \

@@ -1,11 +1,7 @@
 {
   lib,
   rustPlatform,
-  fetchPnpmDeps,
   pkg-config,
-  nodejs,
-  pnpm,
-  pnpmConfigHook,
   wrapGAppsHook3,
   glib,
   gtk3,
@@ -33,20 +29,8 @@ rustPlatform.buildRustPackage rec {
     allowBuiltinFetchGit = true;
   };
 
-  pnpmDeps = fetchPnpmDeps {
-    pname = "ryotunes-ui";
-    inherit version;
-    src = src + "/ui";
-    fetcherVersion = 4;
-    hash = "sha256-L0HRYhFO5A0qqwdiYzN+h28kV7vAqB3up+Zu4ShYnBo=";
-  };
-  pnpmRoot = "ui";
-
   nativeBuildInputs = [
     pkg-config
-    nodejs
-    pnpm
-    pnpmConfigHook
     wrapGAppsHook3
     rustPlatform.bindgenHook
   ];
@@ -68,12 +52,9 @@ rustPlatform.buildRustPackage rec {
 
   preBuild = ''
     export HOME="$TMPDIR"
-    (cd ui && pnpm build)
-    test -f ui/build/index.html
   '';
 
   cargoBuildFlags = [
-    "--package" "ryotunes"
     "--package" "sync-server"
     "--package" "ryotunesd"
     "--package" "ryotunes-cli"
@@ -95,7 +76,6 @@ rustPlatform.buildRustPackage rec {
       install -Dm755 "$binary" "$out/bin/$name"
     }
 
-    install_bin ryotunes
     install_bin ryotunes-sync
     install_bin ryotunesd
     install_bin ryotunes-cli
@@ -144,7 +124,7 @@ rustPlatform.buildRustPackage rec {
   '';
 
   meta = {
-    description = "Ryotunes native playback daemon, CLI and QML client";
+    description = "Ryotunes playback daemon, CLI and native Quickshell client";
     homepage = "https://github.com/Ryoku-dev/RyotunesNix";
     license = lib.licenses.gpl3Plus;
     platforms = [ "x86_64-linux" ];
