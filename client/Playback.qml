@@ -155,7 +155,7 @@ Singleton {
     function setVolume(v) { return Daemon.call("set_volume", { volume: v }); }
     // Send the Sound dialog's effects to the daemon; its audio-fx echo updates root.audioFx.
     function setAudioFx(fx) {
-        return Daemon.call("set_audio_fx", { speed: fx.speed, semitones: fx.semitones, reverb: fx.reverb, bass: fx.bass, width: fx.width });
+        return Daemon.call("set_audio_fx", { speed: fx.speed, semitones: fx.semitones, reverb: fx.reverb, bass: fx.bass, width: fx.width, eq: fx.eq });
     }
     // Optimistic: the switch flips the local mirror at once and asks the daemon. The daemon method
     // lands later, so a failure is swallowed rather than surfaced.

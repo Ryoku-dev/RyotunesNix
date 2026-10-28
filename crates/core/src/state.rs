@@ -4331,6 +4331,14 @@ impl AppState {
         if !fx.width.is_finite() || !(0.0..=1.0).contains(&fx.width) {
             return Err("Width must be between 0 and 1.".into());
         }
+        for (index, band) in fx.eq.bands.iter().enumerate() {
+            if !band.frequency.is_finite() || !(20.0..=20000.0).contains(&band.frequency)
+                || !band.q.is_finite() || !(0.3..=10.0).contains(&band.q)
+                || !band.gain.is_finite() || !(-12.0..=12.0).contains(&band.gain)
+            {
+                return Err(format!("Invalid equalizer values in band {}.", index + 1));
+            }
+        }
         self.player.set_fx(&fx).map_err(|e| e.to_string())?;
         *self.audio_fx.write() = fx;
         self.emit("audio-fx", fx);

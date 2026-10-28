@@ -26,6 +26,7 @@ Item {
     property bool lyricsOpen: false
     signal tabRequested(string tab)
     signal closeRequested()
+    signal focusRequested()
 
     readonly property bool open: root.nowPlayingOpen || root.queueOpen || root.lyricsOpen
 
@@ -96,6 +97,35 @@ Item {
                 font.family: Style.fontMono
                 font.pixelSize: Style.fs.micro
                 font.letterSpacing: Style.trackMicro
+            }
+            // First-party Ryotunes entry point to the Riff-inspired immersive stage.
+            Rectangle {
+                id: focusPill
+                implicitWidth: focusRow.implicitWidth + Style.sp(6)
+                implicitHeight: Style.sp(9)
+                radius: Style.radius
+                color: focusHover.hovered ? Tokens.tint10 : Tokens.paperLift
+                border.width: 1
+                border.color: focusHover.hovered ? Tokens.lineStrong : Tokens.line
+                RowLayout {
+                    id: focusRow
+                    anchors.centerIn: parent
+                    spacing: Style.sp(1.5)
+                    Icon { name: "expand"; size: Style.fs.sm; color: Tokens.inkDim }
+                    Text {
+                        text: "Focus"
+                        color: Tokens.inkDim
+                        font.family: Style.fontUi
+                        font.pixelSize: Style.fs.sm
+                        font.weight: Font.Medium
+                    }
+                }
+                HoverHandler { id: focusHover }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.focusRequested()
+                }
             }
             Rectangle {
                 id: collapsePill

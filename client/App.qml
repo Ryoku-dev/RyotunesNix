@@ -37,6 +37,8 @@ Item {
     // The Sound dialog (tempo / pitch / reverb / bass / width). A modal Loader that only exists while
     // open; SoundWorker lands chrome/SoundDialog.qml and Playback.soundRequested.
     property bool soundOpen: false
+    // Focus Mode is a separate surface; existing Now Playing remains unchanged.
+    property bool focusOpen: false
 
     // The mini player window's visibility. shell.qml's mini PanelWindow binds its visible to this; the
     // title-bar and player-bar buttons toggle it, MiniPlayer clears it.
@@ -51,6 +53,11 @@ Item {
         app.nowPlayingOpen = true;
         app.queueOpen = tab === "queue";
         app.lyricsOpen = tab === "lyrics";
+    }
+    function openFocus() {
+        if (!Playback.now) return;
+        app.soundOpen = false;
+        app.focusOpen = true;
     }
     function npClose() {
         app.nowPlayingOpen = false;
@@ -102,6 +109,8 @@ Item {
     ColumnLayout {
         id: frame
         anchors.fill: parent
+        // Hidden, not destroyed, so playback and navigation state survive returning.
+        visible: !app.focusOpen
         spacing: 0
 
         // Spec-9 snapshot blur: a modal captures the whole frame behind it once (layer.live: false)
@@ -234,6 +243,7 @@ Item {
                     lyricsOpen: app.lyricsOpen
                     onTabRequested: (tab) => app.npOpenTab(tab)
                     onCloseRequested: app.npClose()
+                    onFocusRequested: app.openFocus()
                 }
             }
 
@@ -290,6 +300,25 @@ Item {
         }
     }
 
+    // Ryotunes Focus Mode (Riff-inspired interaction, Ryotunes-native surface).
+    // A separate listening surface, created only when requested; the daemon and
+    // existing Now Playing state are preserved when the user exits.
+    Loader {
+        id: focusLoader
+        anchors.fill: parent
+        active: app.focusOpen
+        source: "chrome/FocusMode.qml"
+    }
+    Connections {
+        target: focusLoader.item
+        ignoreUnknownSignals: true
+        function onCloseRequested(): void { app.focusOpen = false; }
+    }
+    Connections {
+        target: Playback
+        function onNowChanged(): void { if (!Playback.now) app.focusOpen = false; }
+    }
+
     // ── foreground layer ────────────────────────────────────────────────────────────────
     Toast { }
 
@@ -321,9 +350,10 @@ Item {
     Shortcut {
         sequences: ["Escape"]
         context: Qt.WindowShortcut
-        enabled: palette.open || app.nowPlayingOpen
+        enabled: palette.open || app.focusOpen || app.nowPlayingOpen
         onActivated: {
             if (palette.open) palette.open = false;
+            else if (app.focusOpen) app.focusOpen = false;
             else app.npClose();
         }
     }
