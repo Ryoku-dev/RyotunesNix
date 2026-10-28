@@ -256,7 +256,7 @@ Rectangle {
                     Layout.alignment: Qt.AlignVCenter
                     implicitHeight: Style.sp(7)
                     implicitWidth: pillRow.implicitWidth + Style.sp(5)
-                    radius: height / 2
+                    radius: Style.radius
                     color: pillHover.hovered ? Tokens.tint10 : "transparent"
                     border.width: 1
                     border.color: pillHover.hovered ? Tokens.lineStrong : Tokens.line

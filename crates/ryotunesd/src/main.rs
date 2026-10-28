@@ -61,6 +61,25 @@ fn main() -> anyhow::Result<()> {
         let (state, events, media_rx, lt_rx) =
             app::build(paths, sink.clone(), js, login, &tokio::runtime::Handle::current())?;
         app::spawn_pumps(state.clone(), events, media_rx, lt_rx, sink.clone(), lifecycle.clone());
+
+        // Optional Soloist event observer. Deliberately namespaced: no MPV state,
+        // Spotify sign-in state, QML player or existing provider routing is changed.
+        // Enable only for a manual integration test: RYOTUNES_SOLOIST_EVENTS=1.
+        if std::env::var("RYOTUNES_SOLOIST_EVENTS").ok().as_deref() == Some("1") {
+            let observer_state = state.clone();
+            tokio::spawn(async move {
+                let bridge = ryotunes_core::soloist::SoloistBridge::discover();
+                loop {
+                    if let Err(error) = bridge
+                        .watch_stream(|event| observer_state.emit("soloist-event", event))
+                        .await
+                    {
+                        tracing::debug!(%error, "Soloist event stream ended; reconnecting");
+                    }
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                }
+            });
+        }
         tray::spawn(state.clone(), quit_tx.clone(), sink.clone());
 
         // Restore a cached Spotify session in the background so browsing and playback are ready

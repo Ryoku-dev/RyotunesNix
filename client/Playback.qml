@@ -73,10 +73,193 @@ Singleton {
     // A surface (player-bar tools, track menu) asking the App to open the Sound dialog.
     signal soundRequested()
 
+    // --- Spotify Soloist: use the same player bar, not a second interface ---------------------
+    // The Rust daemon forwards native Soloist updates as "soloist-event". A sparse snapshot
+    // poll repairs late attachment and daemon reconnects without depending on event timing.
+    property bool soloistLoading: false
+    property string soloistError: ""
+
+    function soloistTrack(n) {
+        if (!n || !n.videoId) return;
+        var seconds = Math.max(0, Math.round(Number(n.durationMs || 0) / 1000));
+        var minutes = Math.floor(seconds / 60);
+        var rem = (seconds % 60).toString().padStart(2, "0");
+        root.now = {
+            videoId: n.videoId,
+            title: n.title || "Unknown track",
+            artists: n.artists || "",
+            artist: n.artists || "",
+            album: n.album || "",
+            thumbnail: n.thumbnail || "",
+            duration: minutes + ":" + rem,
+            rating: "indifferent"
+        };
+        root.duration = Math.max(0, Number(n.durationMs || 0) / 1000);
+        root.position = PB.clampPosition(root.duration, Number(n.positionMs || 0) / 1000);
+        root.paused = !!n.paused;
+        root.volume = Number(n.volume === undefined ? root.volume : n.volume);
+        Daemon.soloistPaused = root.paused;
+        root.pendingVideoId = null;
+        root.lastError = null;
+        root.soloistError = "";
+        root.soloistEnsureQueue();
+    }
+
+    function soloistEnsureQueue() {
+        if (!root.now) return;
+        var q = root.queue || {};
+        var items = q.items || [];
+        if (!items.length || items[0].video_id !== root.now.videoId) {
+            root.queue = {
+                items: [{ video_id: root.now.videoId, title: root.now.title,
+                    artists: root.now.artists, thumbnail: root.now.thumbnail,
+                    duration: root.now.duration }],
+                currentIndex: 0, shuffle: Daemon.soloistShuffle,
+                repeat: q.repeat || "off", sourceName: "Spotify"
+            };
+        }
+        Daemon.soloistQueueItems = root.queue.items;
+    }
+
+    function soloistReadQueue(source) {
+        if (!source || root.provider !== "spotify") return;
+        var rows = source.queue || source.items || source.tracks || source.next_tracks || [];
+        if (!Array.isArray(rows)) rows = rows.items || rows.tracks || [];
+        var current = root.now ? [{ video_id: root.now.videoId,
+            title: root.now.title, artists: root.now.artists,
+            thumbnail: root.now.thumbnail, duration: root.now.duration }] : [];
+        for (var i = 0; i < rows.length; i++) {
+            var item = rows[i].item || rows[i].track || rows[i];
+            var id = item.uri || item.video_id || item.videoId || "";
+            if (!String(id).startsWith("spotify:track:")) continue;
+            if (current.length && current[0].video_id === id) continue;
+            var dec = item.decorations || {};
+            var creators = dec.creators || [];
+            var artists = creators.map(c => (c.entity && c.entity.decorations
+                && c.entity.decorations.identity || {}).name || "").filter(Boolean).join(", ");
+            var covers = (dec.visual_identity && dec.visual_identity.cover) || [];
+            var cover = covers.filter(c => c.size === "large")[0] || covers[covers.length - 1];
+            var secs = Math.round(((dec.playback || {}).duration_ms || 0) / 1000);
+            current.push({ video_id: id,
+                title: (dec.identity || {}).name || item.title || "Unknown track",
+                artists: artists || item.artists || "",
+                thumbnail: (cover && cover.url) || item.thumbnail || "",
+                duration: Math.floor(secs / 60) + ":" + (secs % 60).toString().padStart(2, "0") });
+        }
+        var old = root.queue || {};
+        root.queue = { items: current, currentIndex: 0, shuffle: Daemon.soloistShuffle,
+            repeat: old.repeat || "off", sourceName: "Spotify" };
+        Daemon.soloistQueueItems = current;
+    }
+
+    function soloistEvent(event) {
+        if (!event || root.provider !== "spotify") return;
+        var src = event.source || {};
+        if (event.kind === "playback_state" && event.now) {
+            root.soloistTrack(event.now);
+            if (src.options) root.soloistOptions(src.options);
+        } else if (event.kind === "position_sync" && src.position) {
+            root.position = PB.clampPosition(root.duration, Number(src.position.position_ms || 0) / 1000);
+        } else if (event.kind === "playback_changed") {
+            root.paused = src.status !== "playing";
+            Daemon.soloistPaused = root.paused;
+        } else if (event.kind === "volume_changed") {
+            if (!root.volDrag && typeof src.volume === "number") root.volume = src.volume;
+        } else if (event.kind === "queue_changed") {
+            root.soloistReadQueue(src);
+        } else if (event.kind === "options_changed") {
+            root.soloistOptions(src.options || src);
+        } else if (event.kind === "track_changed") {
+            root.soloistRefresh();
+        }
+    }
+
+    function soloistOptions(o) {
+        if (!o) return;
+        var q = root.queue || {};
+        if (o.shuffle !== undefined) Daemon.soloistShuffle = !!o.shuffle;
+        var repeat = o.repeat === "track" || o.repeat === "one" ? "one"
+            : o.repeat === "context" || o.repeat === "all" ? "all" : "off";
+        root.queue = Object.assign({}, q, { shuffle: Daemon.soloistShuffle, repeat: repeat });
+    }
+
+    function soloistRefresh() {
+        if (root.provider !== "spotify" || !Daemon.connected || root.soloistLoading) return;
+        root.soloistLoading = true;
+        Daemon.call("soloist_now").then(result => {
+            if (root.provider !== "spotify") return;
+            root.soloistTrack(result.now);
+            if (result.source && result.source.options) root.soloistOptions(result.source.options);
+        }).catch(e => {
+            var message = (e && e.message) || "Start Spotify Soloist to play music";
+            if (root.soloistError !== message) root.toast(message, "error");
+            root.soloistError = message;
+        }).finally(() => { root.soloistLoading = false; });
+    }
+
+    function soloistRestoreMpv() {
+        if (!Daemon.connected) return;
+        Daemon.call("get_playback").then(pb => {
+            if (root.provider === "spotify" || !pb) return;
+            root.now = pb.now;
+            root.paused = pb.paused;
+            root.volume = pb.volume;
+            root.duration = pb.duration;
+            root.position = PB.clampPosition(pb.duration, pb.position);
+        }).catch(() => {});
+        Daemon.call("get_queue").then(q => {
+            if (root.provider !== "spotify") root.queue = q;
+        }).catch(() => {});
+    }
+
+    onProviderChanged: {
+        var enteringSpotify = root.provider === "spotify";
+        // Only one audio engine should remain audible after a provider switch.
+        if (enteringSpotify && !Daemon.soloistMode && root.now && !root.paused)
+            Daemon.call("toggle_pause").catch(() => {});
+        if (!enteringSpotify && Daemon.soloistMode && !Daemon.soloistPaused)
+            Daemon.call("soloist_control", { action: "pause", args: {} }).catch(() => {});
+        Daemon.soloistMode = enteringSpotify;
+        if (Daemon.soloistMode) {
+            root.now = null;
+            root.queue = { items: [], currentIndex: 0, shuffle: false, repeat: "off" };
+            root.soloistRefresh();
+            Daemon.call("soloist_queue", { limit: 20 })
+                .then(q => root.soloistReadQueue(q)).catch(() => {});
+        } else {
+            root.soloistRestoreMpv();
+        }
+    }
+
+    Timer {
+        interval: 250
+        repeat: true
+        running: root.provider === "spotify" && !root.paused && root.duration > 0
+        onTriggered: root.position = PB.clampPosition(root.duration, root.position + 0.25)
+    }
+    Timer {
+        interval: 8000
+        repeat: true
+        running: root.provider === "spotify" && Daemon.connected
+        onTriggered: {
+            root.soloistRefresh();
+            Daemon.call("soloist_queue", { limit: 20 })
+                .then(q => root.soloistReadQueue(q)).catch(() => {});
+        }
+    }
+
     // --- events + opening snapshot -----------------------------------------------------------
     Connections {
         target: Daemon
         function onEvent(name, data) {
+            if (name === "soloist-event") {
+                root.soloistEvent(data);
+                return;
+            }
+            // Prevent MPV state echoes from overwriting Soloist's visible player.
+            if (root.provider === "spotify" && ["now-playing", "position", "duration",
+                "playback-state", "queue-changed", "queue-index", "volume", "rating"]
+                .indexOf(name) !== -1) return;
             var fx = PB.applyEvent(root, name, data);
             if (fx) {
                 if (fx.toast) root.toast(fx.toast, fx.kind);
@@ -91,9 +274,10 @@ Singleton {
     // (and re-sends after every reconnect), the socket equivalent of frontend_ready's resync.
     function loadSnapshot(snap) {
         if (!snap) return;
-        if (snap.queue) root.queue = snap.queue;
+        if (snap.provider) root.provider = snap.provider;
+        if (snap.queue && root.provider !== "spotify") root.queue = snap.queue;
         var pb = snap.playback;
-        if (pb) {
+        if (pb && root.provider !== "spotify") {
             root.volume = pb.volume;         // before the now guard: the slider is stale either way
             if (!root.now) {                 // a real now-playing event may have beaten the snapshot
                 root.now = pb.now;
@@ -107,7 +291,6 @@ Singleton {
         if (snap.settings) root.settings = snap.settings;
         if (snap.auth) root.auth = { signedIn: !!snap.auth.signedIn, name: snap.auth.name, avatar: snap.auth.avatar };
         if (snap.audioFx) root.audioFx = snap.audioFx;
-        if (snap.provider) root.provider = snap.provider;
         if (snap.spotify)
             root.spotify = { signedIn: !!snap.spotify.signedIn, stored: !!snap.spotify.stored,
                 name: snap.spotify.name, premium: snap.spotify.premium };

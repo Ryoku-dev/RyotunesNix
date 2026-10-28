@@ -156,6 +156,11 @@ fn spotify_err(e: impl ToString) -> ErrorBody {
     ErrorBody { code: "spotify".into(), message: e.to_string() }
 }
 
+/// Soloist connection errors must not affect the existing Spotify/librespot auth state.
+fn soloist_err(e: impl ToString) -> ErrorBody {
+    ErrorBody { code: "soloist".into(), message: e.to_string() }
+}
+
 /// The error a by-prefix Spotify command returns when no session is signed in.
 fn spotify_signed_out() -> ErrorBody {
     ErrorBody { code: "spotify_signed_out".into(), message: "Sign in to Spotify".into() }
@@ -428,6 +433,29 @@ impl Dispatch for Methods {
             }
             "get_provider" => ok(json!({ "provider": st.spotify.selected().as_str() })),
             "spotify_status" => ok(spotify_status_json(st).await),
+            // --- Soloist trial bridge (opt-in; does not touch the MPV player) ----------------
+            "soloist_status" => {
+                let bridge = ryotunes_core::soloist::SoloistBridge::discover();
+                match bridge.status().await {
+                    Ok(status) => ok(json!({ "available": true, "state": status })),
+                    Err(error) => ok(json!({ "available": false, "reason": error.to_string() })),
+                }
+            }
+            "soloist_now" => {
+                let bridge = ryotunes_core::soloist::SoloistBridge::discover();
+                ok(bridge.now().await.map_err(soloist_err)?)
+            }
+            "soloist_queue" => {
+                let limit = opt_arg::<u32>(&params, "limit").unwrap_or(10);
+                let bridge = ryotunes_core::soloist::SoloistBridge::discover();
+                ok(bridge.queue(limit).await.map_err(soloist_err)?)
+            }
+            "soloist_control" => {
+                let action = arg::<String>(&params, "action")?;
+                let args = params.get("args").cloned().unwrap_or_else(|| json!({}));
+                let bridge = ryotunes_core::soloist::SoloistBridge::discover();
+                ok(bridge.control(&action, &args).await.map_err(soloist_err)?)
+            }
             "soundcloud_status" => ok(soundcloud_status_json(st)),
             "tidal_status" => ok(tidal_status_json(st)),
             "tidal_sign_out" => {

@@ -32,13 +32,22 @@ Item {
     readonly property bool panelShown: app.panelOpen && app.width >= Style.sp(275) && !app.nowPlayingOpen
 
     // The navigation rail's collapse state, toggled from the title bar.
-    property bool sidebarOpen: true
+    property bool sidebarOpen: false
 
     // The Sound dialog (tempo / pitch / reverb / bass / width). A modal Loader that only exists while
     // open; SoundWorker lands chrome/SoundDialog.qml and Playback.soundRequested.
     property bool soundOpen: false
     // Focus Mode is a separate surface; existing Now Playing remains unchanged.
     property bool focusOpen: false
+
+    // Audio Lab is global chrome, never part of a routed page's scroll layout.
+    // A manual hide persists across navigation until reopened from the top bar.
+    property bool audioLabOpen: Prefs.audiophileMode
+    Connections {
+        target: Prefs
+        function onAudiophileModeChanged(): void { app.audioLabOpen = Prefs.audiophileMode; }
+        function onShowAudioLabRequested(): void { app.audioLabOpen = true; }
+    }
 
     // The mini player window's visibility. shell.qml's mini PanelWindow binds its visible to this; the
     // title-bar and player-bar buttons toggle it, MiniPlayer clears it.
@@ -129,6 +138,8 @@ Item {
             Layout.fillWidth: true
             sidebarOpen: app.sidebarOpen
             panelOpen: app.panelShown
+            audioLabOpen: app.audioLabOpen
+            onAudioLabClicked: app.audioLabOpen = !app.audioLabOpen
             onSidebarToggleClicked: app.sidebarOpen = !app.sidebarOpen
             onPanelToggleClicked: app.panelOpen = !app.panelOpen
             onSoundClicked: app.soundOpen = true
@@ -146,6 +157,12 @@ Item {
                 Layout.fillHeight: true
                 open: app.sidebarOpen
                 onCollapseRequested: app.sidebarOpen = false
+            }
+            // Riff-inspired icon navigation, rendered with Ryoku-native controls.
+            CompactNav {
+                Layout.fillHeight: true
+                visible: !app.sidebarOpen
+                onExpandRequested: app.sidebarOpen = true
             }
 
             // The content area: the single cover Backdrop, a paper glass over it so the bloom reads
@@ -168,14 +185,17 @@ Item {
                     color: Qt.rgba(Tokens.paper.r, Tokens.paper.g, Tokens.paper.b, 0.88)
                 }
                 // The provider's light over the glass: red for YouTube Music, green for Spotify.
-                ProviderGlow { anchors.fill: parent; focusX: 0.82; focusY: 0.1 }
+                ProviderGlow { anchors.fill: parent; focusX: 0.82; focusY: 0.1; strength: 0.17 }
 
                 Item {
                     id: pageClip
                     anchors.fill: parent
                     anchors.leftMargin: Style.pagePad
                     anchors.rightMargin: Style.pagePad
-                    anchors.topMargin: Style.sp(6)
+                    // Make space for the fixed top instrument strip instead of
+                    // overlaying or resizing the Library's scrollable children.
+                    anchors.topMargin: audioLabStrip.visible
+                        ? audioLabStrip.height + Style.sp(5) : Style.sp(6)
                     anchors.bottomMargin: Style.pagePad
                     clip: true
 
@@ -198,6 +218,20 @@ Item {
                                     radio: "RadioPage", downloads: "DownloadsPage", settings: "SettingsPage" };
                                 return m[pageStack.page] ? Qt.resolvedUrl("pages/" + m[pageStack.page] + ".qml") : "";
                             }
+                        }
+                        Connections {
+                            target: pageLoader.item
+                            ignoreUnknownSignals: true
+                            function onFocusRequested(): void { app.openFocus(); }
+                        }
+                        // Home places Audio Lab in its own feed, after the hero search
+                        // and before the listening card. Other routes use the top strip.
+                        // Binding only targets HomePage; other pages have no such property.
+                        Binding {
+                            target: pageStack.page === "home" ? pageLoader.item : null
+                            property: "audioLabEnabled"
+                            value: Prefs.audiophileMode && app.audioLabOpen
+                                && !app.focusOpen && !app.modalOpen
                         }
                         Loader {
                             anchors.fill: parent
@@ -238,12 +272,38 @@ Item {
 
                 NowPlaying {
                     anchors.fill: parent
+                    // The stage shares the content region below the Audio Lab.
+                    anchors.topMargin: audioLabStrip.visible
+                        ? audioLabStrip.height + Style.sp(5) : 0
                     nowPlayingOpen: app.nowPlayingOpen
                     queueOpen: app.queueOpen
                     lyricsOpen: app.lyricsOpen
                     onTabRequested: (tab) => app.npOpenTab(tab)
                     onCloseRequested: app.npClose()
                     onFocusRequested: app.openFocus()
+                }
+
+                // Audiophile Mode: the original wide, low-profile spectrum layout,
+                // now fixed to the top of the shared content surface on every route.
+                // No floating overlay, bottom docking, or debug metadata heading.
+                // Hiding the strip releases its capture claim and restores page height.
+                AudioLabWorkbench {
+                    id: audioLabStrip
+                    visible: Prefs.audiophileMode && app.audioLabOpen
+                        && !app.focusOpen && !app.modalOpen
+                        && pageStack.page !== "home"
+                    active: visible
+                    z: 10
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.leftMargin: Style.pagePad
+                    anchors.rightMargin: Style.pagePad
+                    anchors.topMargin: Style.sp(2)
+                    // Approx. 192-200px on a full-size window; adapt gracefully
+                    // to shorter windows without swallowing the page beneath.
+                    height: Math.min(Style.sp(50),
+                        Math.max(Style.sp(30), parent.height * 0.30))
                 }
             }
 

@@ -20,6 +20,11 @@ import "../lib/recommendations.js" as Recommendations
 Item {
     id: page
 
+    // The App-owned Audio Lab switch is passed only to HomePage. On Home it
+    // belongs in the feed between the search box and the listening hero.
+    property bool audioLabEnabled: false
+    signal focusRequested()
+
     property var home: null
     property var chips: []
     property var forgotten: null
@@ -195,7 +200,7 @@ Item {
         cacheBuffer: Math.max(0, Math.round(height * 1.5))
         boundsBehavior: Flickable.StopAtBounds
         model: blocks
-        spacing: Style.sp(10)
+        spacing: Style.sp(7)
 
         // HomeFeed releases its top pin without restoring a stale pre-layout offset.
         onContentYChanged: page.maybeLoadMore()
@@ -220,12 +225,12 @@ Item {
             width: list.width
             // The list's spacing runs between delegates only; the header carries its own section
             // gap so the first shelf never rides up against the last header block.
-            implicitHeight: headerCol.implicitHeight + Style.sp(10)
+            implicitHeight: headerCol.implicitHeight + Style.sp(5)
 
             ColumnLayout {
                 id: headerCol
                 width: parent.width
-                spacing: Style.sp(10)
+                spacing: Style.sp(6)
 
                 // hero: the greeting, search and key hints on the left (inset 48 px); the Now
                 // Playing card on the right when the page is wide enough that it never crowds the
@@ -239,34 +244,13 @@ Item {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.maximumWidth: Style.sp(120)
+                        // Fill narrower pages; reserve the narrow reading column only
+                        // beside the wide-layout listening card.
+                        Layout.maximumWidth: 16777215
                         Layout.minimumWidth: Style.sp(70)
-                        Layout.leftMargin: Style.sp(4)
                         Layout.alignment: Qt.AlignTop
                         spacing: Style.sp(2)
 
-                        // — 力 HOME / LISTEN ··· 01
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: Style.sp(2)
-                            Rectangle { Layout.preferredWidth: Style.sp(4); Layout.preferredHeight: 1; Layout.alignment: Qt.AlignVCenter; color: Tokens.ink }
-                            Text { text: "力"; color: Tokens.ink; font.family: Tokens.jp; font.pixelSize: Style.fs.sm }
-                            Text {
-                                text: "HOME / LISTEN"
-                                color: Tokens.inkFaint
-                                font.family: Style.fontMono
-                                font.pixelSize: Style.fs.micro
-                                font.letterSpacing: Style.trackMicro
-                            }
-                            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; Layout.alignment: Qt.AlignVCenter; color: Tokens.lineSoft }
-                            Text {
-                                text: "01"
-                                color: Tokens.inkFaint
-                                font.family: Style.fontMono
-                                font.pixelSize: Style.fs.micro
-                                font.letterSpacing: Style.trackMicro
-                            }
-                        }
                         Text {
                             Layout.fillWidth: true
                             text: page.greeting() + ((Playback.auth && Playback.auth.signedIn && Playback.auth.name) ? (", " + Playback.auth.name) : "")
@@ -327,70 +311,25 @@ Item {
                             }
                         }
 
-                        // key hints
-                        RowLayout {
-                            Layout.topMargin: Style.sp(1)
-                            spacing: Style.sp(2)
-                            Text { text: "Ctrl+K"; color: Tokens.inkMuted; font.family: Style.fontMono; font.pixelSize: Style.fs.micro; font.letterSpacing: Style.trackMicro }
-                            Text { text: "command search"; color: Tokens.inkFaint; font.family: Style.fontUi; font.pixelSize: Style.fs.xs }
-                            Rectangle { Layout.preferredWidth: Style.sp(4); Layout.preferredHeight: 1; Layout.alignment: Qt.AlignVCenter; color: Tokens.lineSoft }
-                            Text { text: "Space"; color: Tokens.inkMuted; font.family: Style.fontMono; font.pixelSize: Style.fs.micro; font.letterSpacing: Style.trackMicro }
-                            Text { text: "play / pause"; color: Tokens.inkFaint; font.family: Style.fontUi; font.pixelSize: Style.fs.xs }
-                        }
                     }
 
-                    Item { Layout.fillWidth: true; Layout.minimumWidth: hero.wide ? Style.sp(10) : 0 }
-                    NowPlayingCard {
-                        visible: hero.wide && !!Playback.now
-                        Layout.preferredWidth: Style.sp(138)
-                        Layout.maximumWidth: Style.sp(140)
-                        Layout.alignment: Qt.AlignTop
-                        onOpenQueue: Playback.nowPlayingRequested("queue")
-                    }
                 }
 
-                // The restored listening session must remain reachable on a narrow Home too.
-                RowLayout {
+                // Keep the original shallow analyser below Home's search bar,
+                // above the artwork-led listening card. The feed owns the height,
+                // so tracks and recommendations remain reachable by scrolling.
+                AudioLabWorkbench {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Style.sp(48)
+                    visible: page.audioLabEnabled
+                    active: visible
+                }
+
+                // One listening stage across desktop sizes, no duplicated transport.
+                HomeListeningHero {
                     Layout.fillWidth: true
                     visible: !!Playback.now
-                    spacing: Style.sp(3)
-                    Artwork {
-                        visible: !hero.wide
-                        url: Playback.now && Playback.now.thumbnail ? Playback.now.thumbnail : ""
-                        px: Style.sp(14)
-                    }
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: Style.sp(1)
-                        Text {
-                            Layout.fillWidth: true
-                            text: Playback.paused ? "Continue listening" : "Your listening session"
-                            color: Tokens.ink
-                            font.family: Style.fontUi
-                            font.pixelSize: Style.fs.md
-                            font.weight: Font.Medium
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: Playback.now ? Playback.now.title + " — " + Playback.now.artists : ""
-                            color: Tokens.inkMuted
-                            font.family: Style.fontUi
-                            font.pixelSize: Style.fs.sm
-                            elide: Text.ElideRight
-                            textFormat: Text.PlainText
-                        }
-                    }
-                    Btn {
-                        text: Playback.paused ? "Resume" : "Pause"
-                        icon: Playback.paused ? "play" : "pause"
-                        primary: Playback.paused
-                        onClicked: Playback.togglePause().catch((e) => Playback.toast(String(e), "error"))
-                    }
-                    IconButton {
-                        icon: "queue"
-                        tip: "Open your queue"
-                        onClicked: Playback.nowPlayingRequested("queue")
-                    }
+                    onFocusRequested: page.focusRequested()
                 }
 
                 HomePersonal {
@@ -404,7 +343,7 @@ Item {
                 Item {
                     Layout.fillWidth: true
                     implicitHeight: chipRow.implicitHeight
-                    visible: page.chips.length > 0
+                    visible: page.chips.length > 0 || page.selected === ""
                     Flickable {
                         id: chipsFlick
                         anchors.fill: parent
@@ -417,6 +356,7 @@ Item {
                             id: chipRow
                             spacing: Style.sp(2)
                             Chip {
+                                visible: page.chips.length > 0
                                 text: "All"
                                 active: page.selected === ""
                                 onClicked: page.load("")
@@ -429,6 +369,13 @@ Item {
                                     active: page.selected === modelData.params
                                     onClicked: page.load(page.selected === modelData.params ? "" : modelData.params)
                                 }
+                            }
+                            // The creation action stays discoverable without a large,
+                            // otherwise empty section taking space above the music.
+                            Chip {
+                                visible: page.selected === ""
+                                text: "+ Shortcut"
+                                onClicked: shortcutPicker.open()
                             }
                         }
                     }
@@ -446,17 +393,17 @@ Item {
                     }
                 }
 
-                // shortcuts (pinned, unfiltered only) — bordered 56 px cards, then a dashed
-                // "Add shortcut" card of the same height
+                // Show the full shortcuts section once populated. Before then,
+                // the filter rail offers a compact "+ Shortcut" action instead.
                 ColumnLayout {
                     Layout.fillWidth: true
-                    visible: page.selected === ""
+                    visible: false
                     spacing: Style.sp(4)
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Style.sp(2)
                         Icon { Layout.alignment: Qt.AlignVCenter; name: "dashboard"; size: Style.fs.md; color: Tokens.inkMuted }
-                        SectionHeading { Layout.fillWidth: true; title: "// Shortcuts"; mark: Style.decorRich ? "選" : "" }
+                        SectionHeading { Layout.fillWidth: true; title: "Shortcuts"; mark: Style.decorRich ? "選" : "" }
                     }
                     Flow {
                         id: pinFlow

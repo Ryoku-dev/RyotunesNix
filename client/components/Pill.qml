@@ -21,7 +21,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: height / 2
+        radius: Style.radius
         color: root.primary ? Tokens.bone
             : ma.pressed ? Tokens.tint16
             : hover.hovered ? Tokens.tint5

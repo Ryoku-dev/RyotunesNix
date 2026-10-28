@@ -14,7 +14,7 @@ Rectangle {
 
     implicitHeight: Style.sp(8)
     implicitWidth: label.implicitWidth + Style.sp(8)
-    radius: height / 2
+    radius: Style.radius
     color: active ? Tokens.bone : chipHover.hovered ? Tokens.tint10 : "transparent"
     border.width: 1
     border.color: active ? Tokens.bone : chipHover.hovered ? Tokens.lineStrong : Tokens.line

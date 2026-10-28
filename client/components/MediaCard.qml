@@ -85,6 +85,7 @@ Item {
         Item {
             Layout.fillWidth: true
             implicitHeight: width
+            clip: true
 
             Artwork {
                 id: art
@@ -93,6 +94,11 @@ Item {
                 px: root.cardWidth
                 round: root.round
                 cornerRadius: root.round ? art.width / 2 : Style.radiusCard
+                scale: cardHover.hovered && !Tokens.reduceMotion ? 1.035 : 1
+                Behavior on scale {
+                    enabled: !Tokens.reduceMotion
+                    NumberAnimation { duration: Style.motion.snap; easing.type: Easing.OutCubic }
+                }
                 placeholderIcon: root.round ? "user"
                     : (root.item && Ids.isOnRepeatId(root.item.id)) ? "on-repeat" : "music"
             }

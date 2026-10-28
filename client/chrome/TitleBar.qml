@@ -19,9 +19,11 @@ Rectangle {
     signal accountClicked(real gx, real gy)
     signal listenTogetherClicked()
     signal miniClicked()
+    signal audioLabClicked()
 
     property bool sidebarOpen: true
     property bool panelOpen: true
+    property bool audioLabOpen: false
     property bool discordOn: false
 
     implicitHeight: Style.titleBarH
@@ -67,14 +69,6 @@ Rectangle {
             tipBelow: true
             enabled: Router.canGoBack
             onClicked: Router.pop()
-        }
-        IconButton {
-            icon: "arrow-right"
-            iconSize: Style.fs.lg
-            diameter: Style.sp(8)
-            tip: "Forward"
-            tipBelow: true
-            enabled: false
         }
 
         Item { Layout.fillWidth: true }
@@ -137,6 +131,8 @@ Rectangle {
         // --- search field (routes to the search page) ---------------------------------------
         Rectangle {
             id: searchField
+            // Home already has the full search/suggestion field.
+            visible: !Router.current || Router.current.page !== "home"
             Layout.preferredWidth: Style.sp(70)
             Layout.preferredHeight: Style.sp(8)
             Layout.alignment: Qt.AlignVCenter
@@ -264,6 +260,16 @@ Rectangle {
             tipBelow: true
             active: root.panelOpen
             onClicked: root.panelToggleClicked()
+        }
+        IconButton {
+            visible: Prefs.audiophileMode
+            icon: "dashboard"
+            iconSize: Style.fs.lg
+            diameter: Style.sp(8)
+            tip: root.audioLabOpen ? "Hide Audio Lab" : "Show Audio Lab"
+            tipBelow: true
+            active: root.audioLabOpen
+            onClicked: root.audioLabClicked()
         }
         IconButton {
             icon: "sound"
