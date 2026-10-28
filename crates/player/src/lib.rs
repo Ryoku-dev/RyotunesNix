@@ -62,6 +62,37 @@ fn friendly_error(e: &libmpv2::Error) -> String {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct EqBand {
+    pub frequency: f64,
+    pub gain: f64,
+    pub q: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct ParametricEq {
+    pub enabled: bool,
+    pub bands: [EqBand; 20],
+}
+
+impl Default for ParametricEq {
+    fn default() -> Self {
+        const HZ: [f64; 20] = [
+            32.0, 45.0, 64.0, 90.0, 125.0, 180.0, 250.0, 350.0, 500.0, 700.0,
+            1000.0, 1400.0, 2000.0, 2800.0, 4000.0, 5600.0, 8000.0, 11000.0,
+            15000.0, 19000.0,
+        ];
+        Self {
+            enabled: false,
+            bands: std::array::from_fn(|i| EqBand {
+                frequency: HZ[i],
+                gain: 0.0,
+                q: 1.0,
+            }),
+        }
+    }
+}
+
 /// The user-tunable audio effects the Sound dialog drives (spec section 7). Applied as one mpv
 /// `af` chain alongside the loudness gain; `speed` is mpv's `speed` property, not part of the
 /// chain. Serialized `{speed, semitones, reverb, bass, width}` for the socket — `bass_db` is
@@ -79,13 +110,15 @@ pub struct AudioFx {
     pub bass_db: f64,
     /// Stereo width 0..1; 0 omits the filter.
     pub width: f64,
+    #[serde(default)]
+    pub eq: ParametricEq,
 }
 
 impl Default for AudioFx {
     /// Everything off: speed 1×, no pitch shift, no effects — the same filterless path playback
     /// took before the Sound dialog existed.
     fn default() -> Self {
-        AudioFx { speed: 1.0, semitones: 0, reverb: 0.0, bass_db: 0.0, width: 0.0 }
+        AudioFx { speed: 1.0, semitones: 0, reverb: 0.0, bass_db: 0.0, width: 0.0, eq: ParametricEq::default() }
     }
 }
 
@@ -356,6 +389,17 @@ fn af_chain(gain_db: Option<f64>, fx: &AudioFx) -> String {
     if let Some(g) = gain_db {
         chain.push(format!("lavfi=[volume={g}dB]"));
     }
+    if fx.eq.enabled {
+        for band in &fx.eq.bands {
+            if band.gain.abs() < 0.0001 {
+                continue;
+            }
+            chain.push(format!(
+                "lavfi=[equalizer=f={}:t=q:w={}:g={}]",
+                band.frequency, band.q, band.gain
+            ));
+        }
+    }
     if fx.semitones != 0 {
         // Semitones → frequency multiplier (equal temperament).
         chain.push(format!(
@@ -576,7 +620,7 @@ mod tests {
 
     /// A convenience constructor: every field but the four under test at its neutral value.
     fn fx(reverb: f64, bass_db: f64, width: f64, semitones: i32) -> AudioFx {
-        AudioFx { speed: 1.0, semitones, reverb, bass_db, width }
+        AudioFx { speed: 1.0, semitones, reverb, bass_db, width, eq: Default::default() }
     }
 
     /// Everything above is string-building; this drives a real libmpv and reads `af` back out of
@@ -635,12 +679,26 @@ mod tests {
         // (set_property would error otherwise — this is the only proof aecho/bass/stereowiden
         // parse on this build).
         p.set_gain(None).unwrap();
-        p.set_fx(&AudioFx { speed: 1.0, semitones: 0, reverb: 1.0, bass_db: 8.0, width: 0.8 })
+        p.set_fx(&AudioFx { speed: 1.0, semitones: 0, reverb: 1.0, bass_db: 8.0, width: 0.8, eq: Default::default() })
             .unwrap();
         let live = af();
         assert!(live.contains("aecho"), "reverb missing from live chain: {live}");
         assert!(live.contains("bass"), "bass missing from live chain: {live}");
         assert!(live.contains("stereowiden"), "width missing from live chain: {live}");
+    }
+
+    #[test]
+    fn parametric_eq_is_neutral_until_enabled_and_gained() {
+        let mut fx = AudioFx::default();
+        assert_eq!(af_chain(None, &fx), "");
+        fx.eq.enabled = true;
+        assert_eq!(af_chain(None, &fx), "");
+        fx.eq.bands[10].gain = 3.0;
+        let chain = af_chain(Some(-4.0), &fx);
+        assert!(chain.starts_with("lavfi=[volume=-4dB],"));
+        assert!(chain.contains("lavfi=[equalizer=f=1000:t=q:w=1:g=3]"));
+        fx.eq.enabled = false;
+        assert!(!af_chain(None, &fx).contains("equalizer="));
     }
 
     #[test]

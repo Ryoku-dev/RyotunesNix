@@ -22,7 +22,9 @@ Item {
 
     // The working copy the sliders edit, seeded from the daemon mirror when the dialog opens. Kept
     // local (not a live binding to Playback.audioFx) so a drag is not fought by the echo it causes.
-    property var fx: ({ speed: 1, semitones: 0, reverb: 0, bass: 0, width: 0 })
+    property var fx: ({ speed: 1, semitones: 0, reverb: 0, bass: 0, width: 0, eq: ({ enabled: false, bands: [] }) })
+    property bool equalizerOpen: false
+    property int selectedEqBand: 10
     // Snapshot state. `snapReady` gates the blur (the frozen frame is drawn once, then blurred);
     // `shown` reveals the card and scrim. Both flip when the capture completes, so the snapshot is
     // the frame alone — but a fallback timer flips `shown` regardless, so a build where the capture
@@ -40,7 +42,7 @@ Item {
 
     Component.onCompleted: {
         var a = Playback.audioFx;
-        root.fx = { speed: a.speed, semitones: a.semitones, reverb: a.reverb, bass: a.bass, width: a.width };
+        root.fx = { speed: a.speed, semitones: a.semitones, reverb: a.reverb, bass: a.bass, width: a.width, eq: a.eq || root.defaultEq() };
         // Snapshot the frame behind us. Capture the frame-level item (the child of the window's
         // content root), not the root itself — a plain Item renders to a texture, the window root
         // does not — walking up until the next parent would be that root, whatever the nesting.
@@ -55,6 +57,34 @@ Item {
     Keys.onEscapePressed: (e) => { root.closeRequested(); e.accepted = true; }
 
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function defaultEq() {
+        const hz = [32, 45, 64, 90, 125, 180, 250, 350, 500, 700,
+                    1000, 1400, 2000, 2800, 4000, 5600, 8000, 11000, 15000, 19000];
+        return { enabled: false, bands: hz.map(frequency => ({ frequency: frequency, gain: 0, q: 1 })) };
+    }
+    function activeBand() {
+        const bands = root.fx.eq && root.fx.eq.bands ? root.fx.eq.bands : [];
+        return bands[root.selectedEqBand] || { frequency: 1000, gain: 0, q: 1 };
+    }
+    function setEqEnabled(enabled) {
+        root.patch({ eq: Object.assign({}, root.fx.eq, { enabled: enabled }) });
+    }
+    function setEqBand(index, changes) {
+        const bands = root.fx.eq.bands.map((band, i) => i === index
+            ? Object.assign({}, band, changes) : band);
+        root.patch({ eq: Object.assign({}, root.fx.eq, { bands: bands }) });
+    }
+    function setEqGain(index, value) {
+        root.setEqBand(index, { gain: root.clamp(Math.round(value * 10) / 10, -12, 12) });
+    }
+    function setEqQ(index, value) {
+        root.setEqBand(index, { q: root.clamp(Math.round(value * 10) / 10, 0.3, 10) });
+    }
+    function setEqFrequency(index, position) {
+        const frequency = 20 * Math.pow(1000, root.clamp(position, 0, 1));
+        root.setEqBand(index, { frequency: Math.round(frequency) });
+    }
+    function resetEq() { root.patch({ eq: root.defaultEq() }); }
     // Reassign fx as a whole so the slider bindings (and preset-active state) refresh, then apply
     // after 80 ms of quiet — a drag coalesces into one daemon call instead of one per frame.
     function patch(p) { root.fx = Object.assign({}, root.fx, p); apply.restart(); }
@@ -63,7 +93,7 @@ Item {
     function setReverb(v) { root.patch({ reverb: root.clamp(Math.round(v * 100) / 100, 0, 1) }); }
     function setBass(v) { root.patch({ bass: root.clamp(Math.round(v), -6, 12) }); }
     function setWidth(v) { root.patch({ width: root.clamp(Math.round(v * 100) / 100, 0, 1) }); }
-    function applyPreset(p) { root.fx = { speed: p.speed, semitones: p.semitones, reverb: p.reverb, bass: p.bass, width: p.width }; apply.restart(); }
+    function applyPreset(p) { root.patch(p); }
     function presetActive(p) {
         return root.fx.speed === p.speed && root.fx.semitones === p.semitones
             && root.fx.reverb === p.reverb && root.fx.bass === p.bass && root.fx.width === p.width;
@@ -156,6 +186,11 @@ Item {
                         font.pixelSize: Style.fs.xl
                     }
                 }
+                Chip {
+                    text: root.equalizerOpen ? "EFFECTS" : "20-BAND EQ"
+                    active: root.equalizerOpen
+                    onClicked: root.equalizerOpen = !root.equalizerOpen
+                }
                 IconButton {
                     Layout.alignment: Qt.AlignTop
                     icon: "close"
@@ -166,6 +201,7 @@ Item {
 
             // sliders
             ColumnLayout {
+                visible: !root.equalizerOpen
                 Layout.fillWidth: true
                 spacing: Style.sp(4)
                 FxRow {
@@ -200,10 +236,145 @@ Item {
                 }
             }
 
+            ColumnLayout {
+                visible: root.equalizerOpen
+                Layout.fillWidth: true
+                spacing: Style.sp(3)
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Chip {
+                        text: root.fx.eq.enabled ? "ENABLED" : "BYPASSED"
+                        active: root.fx.eq.enabled
+                        onClicked: root.setEqEnabled(!root.fx.eq.enabled)
+                    }
+                    Chip {
+                        text: "FLAT"
+                        onClicked: root.resetEq()
+                    }
+                    Item { Layout.fillWidth: true }
+                    Text {
+                        text: "20 PARAMETRIC BANDS"
+                        color: Tokens.inkMuted
+                        font.family: Style.fontMono
+                        font.pixelSize: Style.fs.micro
+                    }
+                }
+
+                Canvas {
+                    id: eqGraph
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Style.sp(27)
+                    onPaint: {
+                        const ctx = getContext("2d");
+                        ctx.clearRect(0, 0, width, height);
+                        ctx.strokeStyle = Tokens.inkMuted;
+                        ctx.globalAlpha = 0.25;
+                        ctx.lineWidth = 1;
+                        for (let i = 0; i < 5; i++) {
+                            const y = height * (i + 1) / 6;
+                            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+                        }
+                        ctx.globalAlpha = root.fx.eq.enabled ? 1.0 : 0.3;
+                        ctx.strokeStyle = Tokens.ink;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        const bands = root.fx.eq.bands || [];
+                        for (let x = 0; x <= width; x += 2) {
+                            const hz = 20 * Math.pow(1000, x / Math.max(1, width));
+                            let db = 0;
+                            for (const band of bands) {
+                                const delta = Math.log(hz / band.frequency) / Math.LN2;
+                                const spread = 1 / Math.max(0.3, band.q);
+                                db += band.gain * Math.exp(-0.5 * Math.pow(delta / spread, 2));
+                            }
+                            const y = height / 2 - Math.max(-18, Math.min(18, db)) * height / 42;
+                            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                        }
+                        ctx.stroke();
+                        ctx.globalAlpha = 1.0;
+                    }
+                    Connections {
+                        target: root
+                        function onFxChanged() { eqGraph.requestPaint(); }
+                    }
+                }
+
+                Flickable {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Style.sp(86)
+                    clip: true
+                    contentHeight: eqBands.implicitHeight
+                    boundsBehavior: Flickable.StopAtBounds
+                    ColumnLayout {
+                        id: eqBands
+                        width: parent.width
+                        spacing: Style.sp(2)
+                        Repeater {
+                            // Keep the 20 delegates alive while gain values change.
+                            model: 20
+                            delegate: RowLayout {
+                                id: bandRow
+                                required property int index
+                                readonly property var bandData: root.fx.eq.bands[bandRow.index]
+                                Layout.fillWidth: true
+                                spacing: Style.sp(2)
+                                Chip {
+                                    text: Math.round(bandRow.bandData.frequency) + " Hz"
+                                    active: root.selectedEqBand === bandRow.index
+                                    onClicked: root.selectedEqBand = bandRow.index
+                                }
+                                Slider {
+                                    Layout.fillWidth: true
+                                    from: -12
+                                    to: 12
+                                    value: bandRow.bandData.gain
+                                    onMoved: (v) => root.setEqGain(bandRow.index, v)
+                                    onCommitted: (v) => root.setEqGain(bandRow.index, v)
+                                }
+                                Text {
+                                    Layout.preferredWidth: Style.sp(14)
+                                    horizontalAlignment: Text.AlignRight
+                                    text: (bandRow.bandData.gain > 0 ? "+" : "")
+                                        + Number(bandRow.bandData.gain).toFixed(1) + " dB"
+                                    color: Tokens.inkMuted
+                                    font.family: Style.fontMono
+                                    font.pixelSize: Style.fs.xs
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Text {
+                    text: "BAND " + (root.selectedEqBand + 1) + " · FREQUENCY & Q"
+                    color: Tokens.inkMuted
+                    font.family: Style.fontMono
+                    font.pixelSize: Style.fs.micro
+                }
+                FxRow {
+                    label: "Frequency"
+                    value: Math.round(root.activeBand().frequency) + " Hz"
+                    from: 0
+                    to: 1
+                    val: Math.log(root.activeBand().frequency / 20) / Math.log(1000)
+                    onMoved: (v) => root.setEqFrequency(root.selectedEqBand, v)
+                }
+                FxRow {
+                    label: "Q (width)"
+                    value: Number(root.activeBand().q).toFixed(1)
+                    from: 0.3
+                    to: 10
+                    val: root.activeBand().q
+                    onMoved: (v) => root.setEqQ(root.selectedEqBand, v)
+                }
+            }
+
             Hairline { Layout.fillWidth: true }
 
             // presets
             ColumnLayout {
+                visible: !root.equalizerOpen
                 Layout.fillWidth: true
                 spacing: Style.sp(3)
                 Text {

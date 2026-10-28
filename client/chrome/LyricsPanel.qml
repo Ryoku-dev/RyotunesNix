@@ -18,6 +18,8 @@ Item {
     id: root
 
     property bool compact: false
+    // Display-only typography treatment for the full-window listening stage.
+    property bool focusMode: false
 
     // --- fetched state ----------------------------------------------------------------------
     property var lyrics: null
@@ -257,7 +259,9 @@ Item {
                 readonly property bool wordMode: lineWrap.isActive && !!(lineWrap.modelData.words && lineWrap.modelData.words.length)
                 readonly property int lineFs: root.compact
                     ? (lineWrap.isActive ? Style.fs.lg : Style.fs.md)
-                    : (lineWrap.isActive ? Style.fs.xl : Style.fs.lg)
+                    : root.focusMode
+                        ? (lineWrap.isActive ? Style.fs.title : Style.fs.xl)
+                        : (lineWrap.isActive ? Style.fs.xl : Style.fs.lg)
                 // The active line reads in ink and slightly larger, upcoming lines in inkMuted and
                 // past lines in inkFaint; opacity stays full so colour carries the state, and the
                 // viewport haze then fades every line by its distance from the reading centre.
@@ -529,7 +533,7 @@ Item {
             Layout.topMargin: Style.sp(2)
             Layout.bottomMargin: Style.sp(2)
             spacing: Style.sp(2)
-            visible: !root.compact && !!root.lyrics && !root.loading
+            visible: !root.compact && !root.focusMode && !!root.lyrics && !root.loading
             Text {
                 Layout.fillWidth: true
                 text: {
