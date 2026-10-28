@@ -18,7 +18,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: height / 2
+        radius: Style.radius
         color: root.checked ? Tokens.sun : Tokens.tint16
         border.width: 1
         border.color: root.checked ? Tokens.sun : Tokens.line

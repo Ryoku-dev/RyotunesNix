@@ -61,6 +61,7 @@ Item {
     readonly property var sections: [
         { k: "general", l: "General", jp: "全般" },
         { k: "playback", l: "Playback", jp: "再生" },
+        { k: "audiophile", l: "Audiophile", jp: "音響" },
         { k: "downloads", l: "Downloads", jp: "保存" },
         { k: "data", l: "Data & storage", jp: "保存" },
         { k: "account", l: "Account", jp: "鍵" },
@@ -550,6 +551,7 @@ Item {
                     var h = 0;
                     if (page.section === "general") h = generalCol.implicitHeight;
                     else if (page.section === "playback") h = playbackCol.implicitHeight;
+                    else if (page.section === "audiophile") h = audiophileCol.implicitHeight;
                     else if (page.section === "data") h = dataCol.implicitHeight;
                     else if (page.section === "downloads") h = downloadSettingsLoader.item ? downloadSettingsLoader.item.implicitHeight : 0;
                     else if (page.section === "account") h = accountCol.implicitHeight;
@@ -851,6 +853,117 @@ Item {
                             text: "Preview: Listening to " + (page.discordNameInput.trim() || "Ryotunes")
                             color: Tokens.inkFaint; font.family: Style.fontUi; font.pixelSize: Style.fs.xs
                         }
+                    }
+                }
+
+                // ─────────────────────────── AUDIOPHILE MODE ───────────────────────────
+                ColumnLayout {
+                    id: audiophileCol
+                    visible: page.section === "audiophile"
+                    anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: Style.sp(6); rightMargin: Style.sp(6); topMargin: Style.sp(4) }
+                    spacing: Style.sp(4)
+
+                    SectionHeading { Layout.fillWidth: true; title: "Audiophile Mode"; mark: "音響" }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "A deeper listening workspace, without turning the everyday music player into a control room."
+                        color: Tokens.inkMuted
+                        font.family: Style.fontUi
+                        font.pixelSize: Style.fs.sm
+                        wrapMode: Text.WordWrap
+                    }
+
+                    ToggleRow {
+                        title: "Enable Audiophile Mode"
+                        desc: "Unlock the advanced visualisers and listening tools. Hidden analysers stay idle when their view is closed."
+                        value: Prefs.audiophileMode
+                        onFlipped: (on) => {
+                            Prefs.audiophileMode = on;
+                            Prefs.save();
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: "This is a workspace switch, not an audio bypass. Your EQ curve and enabled state are preserved independently."
+                        color: Tokens.inkFaint
+                        font.family: Style.fontUi
+                        font.pixelSize: Style.fs.sm
+                        wrapMode: Text.WordWrap
+                    }
+
+                    SectionHeading {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Style.sp(3)
+                        visible: Prefs.audiophileMode
+                        title: "Instruments"
+                        mark: "01"
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: Prefs.audiophileMode
+                        spacing: Style.sp(4)
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+                            Text { text: "Spectrum analyser"; color: Tokens.ink; font.family: Style.fontUi; font.pixelSize: Style.fs.md; font.weight: Font.Medium }
+                            Text { Layout.fillWidth: true; text: "Real 40-band spectrum, with Bars and Curve views. Available throughout Ryotunes."; color: Tokens.inkMuted; font.family: Style.fontUi; font.pixelSize: Style.fs.sm; wrapMode: Text.WordWrap }
+                        }
+                        Pill {
+                            label: "Show Audio Lab"
+                            onClicked: Prefs.showAudioLabRequested()
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: Prefs.audiophileMode
+                        spacing: Style.sp(4)
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+                            Text { text: "20-band parametric EQ"; color: Tokens.ink; font.family: Style.fontUi; font.pixelSize: Style.fs.md; font.weight: Font.Medium }
+                            Text { Layout.fillWidth: true; text: "Frequency, gain and Q, with the saved curve controlled in Sound. EQ playback is independent of this mode."; color: Tokens.inkMuted; font.family: Style.fontUi; font.pixelSize: Style.fs.sm; wrapMode: Text.WordWrap }
+                        }
+                        Pill {
+                            label: "Open Sound"
+                            onClicked: Playback.soundRequested()
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: Prefs.audiophileMode
+                        spacing: Style.sp(4)
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 1
+                            Text { text: "Stereo instruments"; color: Tokens.ink; font.family: Style.fontUi; font.pixelSize: Style.fs.md; font.weight: Font.Medium }
+                            Text { Layout.fillWidth: true; text: "Oscilloscope and vectorscope from real stereo samples, available on any page."; color: Tokens.inkMuted; font.family: Style.fontUi; font.pixelSize: Style.fs.sm; wrapMode: Text.WordWrap }
+                        }
+                        Pill {
+                            label: "Show Audio Lab"
+                            onClicked: Prefs.showAudioLabRequested()
+                        }
+                    }
+
+                    SectionHeading {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Style.sp(3)
+                        visible: Prefs.audiophileMode
+                        title: "On the roadmap"
+                        mark: "02"
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        visible: Prefs.audiophileMode
+                        text: "Enhanced lyrics: optional cinematic presentation, retaining existing sync, timing offsets and click-to-seek."
+                        color: Tokens.inkMuted
+                        font.family: Style.fontUi
+                        font.pixelSize: Style.fs.sm
+                        wrapMode: Text.WordWrap
                     }
                 }
 

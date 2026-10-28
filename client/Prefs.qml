@@ -8,10 +8,12 @@ import Quickshell.Io
 // shell.json pattern). Absent or malformed reads as the defaults below.
 Singleton {
     id: root
+    signal showAudioLabRequested()
 
     property alias skin: adapter.skin             // "system" | a skin id (see Skin.qml, docs/SKINS.md)
     property alias decor: adapter.decor           // "skin" | "rich" | "calm": the decor level, or the skin's own
     property alias themeMode: adapter.themeMode   // "system" | "light" | "dark"
+    property alias audiophileMode: adapter.audiophileMode // Opt-in advanced UI; does not change playback EQ
     // The mini widget's offset from the screen's bottom-right corner, logical px.
     property alias miniRight: adapter.miniRight
     property alias miniBottom: adapter.miniBottom
@@ -31,6 +33,7 @@ Singleton {
             property string skin: "system"
             property string decor: "skin"
             property string themeMode: "system"
+            property bool audiophileMode: false
             property int miniRight: 24
             property int miniBottom: 24
         }

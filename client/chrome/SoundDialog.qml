@@ -141,7 +141,9 @@ Item {
     Rectangle {
         id: card
         anchors.centerIn: parent
-        width: Style.sp(120)
+        width: root.equalizerOpen
+            ? Math.min(Style.sp(236), root.width - Style.sp(12))
+            : Style.sp(120)
         implicitHeight: col.implicitHeight + Style.sp(12)
         height: implicitHeight
         radius: Style.radiusCard
@@ -172,13 +174,6 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: Style.sp(1)
-                    Text {
-                        text: "SOUND"
-                        color: Tokens.inkMuted
-                        font.family: Style.fontMono
-                        font.pixelSize: Style.fs.micro
-                        font.letterSpacing: Style.trackMicro
-                    }
                     Text {
                         text: "Sound"
                         color: Tokens.ink
@@ -241,10 +236,13 @@ Item {
                 Layout.fillWidth: true
                 spacing: Style.sp(3)
 
+                // The equalizer is a listening surface, not a scrolling form.
                 RowLayout {
                     Layout.fillWidth: true
+                    spacing: Style.sp(3)
+                    Item { Layout.fillWidth: true }
                     Chip {
-                        text: root.fx.eq.enabled ? "ENABLED" : "BYPASSED"
+                        text: root.fx.eq.enabled ? "ON" : "BYPASS"
                         active: root.fx.eq.enabled
                         onClicked: root.setEqEnabled(!root.fx.eq.enabled)
                     }
@@ -252,124 +250,261 @@ Item {
                         text: "FLAT"
                         onClicked: root.resetEq()
                     }
-                    Item { Layout.fillWidth: true }
-                    Text {
-                        text: "20 PARAMETRIC BANDS"
-                        color: Tokens.inkMuted
-                        font.family: Style.fontMono
-                        font.pixelSize: Style.fs.micro
-                    }
                 }
 
-                Canvas {
-                    id: eqGraph
+                // One response drawing; it repaints only when the EQ data changes.
+                Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Style.sp(27)
-                    onPaint: {
-                        const ctx = getContext("2d");
-                        ctx.clearRect(0, 0, width, height);
-                        ctx.strokeStyle = Tokens.inkMuted;
-                        ctx.globalAlpha = 0.25;
-                        ctx.lineWidth = 1;
-                        for (let i = 0; i < 5; i++) {
-                            const y = height * (i + 1) / 6;
-                            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-                        }
-                        ctx.globalAlpha = root.fx.eq.enabled ? 1.0 : 0.3;
-                        ctx.strokeStyle = Tokens.ink;
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        const bands = root.fx.eq.bands || [];
-                        for (let x = 0; x <= width; x += 2) {
-                            const hz = 20 * Math.pow(1000, x / Math.max(1, width));
-                            let db = 0;
-                            for (const band of bands) {
-                                const delta = Math.log(hz / band.frequency) / Math.LN2;
-                                const spread = 1 / Math.max(0.3, band.q);
-                                db += band.gain * Math.exp(-0.5 * Math.pow(delta / spread, 2));
+                    Layout.preferredHeight: Math.max(Style.sp(24),
+                        Math.min(Style.sp(38), root.height * 0.13))
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: Tokens.paperLift
+                        radius: Style.radius
+                    }
+
+                    Canvas {
+                        id: eqGraph
+                        anchors.fill: parent
+                        anchors.margins: Style.sp(3)
+                        onPaint: {
+                            const ctx = getContext("2d");
+                            ctx.clearRect(0, 0, width, height);
+                            const bands = root.fx.eq && root.fx.eq.bands ? root.fx.eq.bands : [];
+                            const dbAt = function(hz) {
+                                let db = 0;
+                                for (const band of bands) {
+                                    const delta = Math.log(hz / Math.max(1, band.frequency)) / Math.LN2;
+                                    const spread = 1 / Math.max(0.3, band.q);
+                                    db += band.gain * Math.exp(-0.5 * Math.pow(delta / spread, 2));
+                                }
+                                return Math.max(-18, Math.min(18, db));
+                            };
+                            const yAt = function(db) {
+                                return height / 2 - db * height / 42;
+                            };
+
+                            // Quiet grid, with a slightly stronger zero-gain axis.
+                            ctx.lineWidth = 1;
+                            for (const db of [-12, -6, 0, 6, 12]) {
+                                const y = yAt(db);
+                                ctx.globalAlpha = db === 0 ? 0.38 : 0.16;
+                                ctx.strokeStyle = Tokens.inkMuted;
+                                ctx.beginPath();
+                                ctx.moveTo(0, y);
+                                ctx.lineTo(width, y);
+                                ctx.stroke();
                             }
-                            const y = height / 2 - Math.max(-18, Math.min(18, db)) * height / 42;
-                            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                            for (const hz of [100, 1000, 10000]) {
+                                const x = width * Math.log(hz / 20) / Math.log(1000);
+                                ctx.globalAlpha = 0.16;
+                                ctx.beginPath();
+                                ctx.moveTo(x, 0);
+                                ctx.lineTo(x, height);
+                                ctx.stroke();
+                            }
+
+                            // Preview of the combined response. The player is authoritative.
+                            ctx.globalAlpha = root.fx.eq.enabled ? 0.95 : 0.28;
+                            ctx.strokeStyle = Style.accent;
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            for (let x = 0; x <= width; x += 2) {
+                                const hz = 20 * Math.pow(1000, x / Math.max(1, width));
+                                const y = yAt(dbAt(hz));
+                                if (x === 0) ctx.moveTo(x, y);
+                                else ctx.lineTo(x, y);
+                            }
+                            ctx.lineTo(width, yAt(dbAt(20000)));
+                            ctx.stroke();
+
+                            // Selected band's position, so frequency edits have context.
+                            const selected = root.activeBand();
+                            const sx = Math.max(0, Math.min(width,
+                                width * Math.log(Math.max(20, selected.frequency) / 20) / Math.log(1000)));
+                            const sy = yAt(dbAt(Math.max(20, selected.frequency)));
+                            ctx.globalAlpha = root.fx.eq.enabled ? 0.8 : 0.3;
+                            ctx.strokeStyle = Tokens.inkMuted;
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(sx, 0);
+                            ctx.lineTo(sx, height);
+                            ctx.stroke();
+                            ctx.globalAlpha = 1;
+                            ctx.fillStyle = Style.accent;
+                            ctx.beginPath();
+                            ctx.arc(sx, sy, Style.sp(1.1), 0, Math.PI * 2);
+                            ctx.fill();
                         }
-                        ctx.stroke();
-                        ctx.globalAlpha = 1.0;
-                    }
-                    Connections {
-                        target: root
-                        function onFxChanged() { eqGraph.requestPaint(); }
+                        Connections {
+                            target: root
+                            function onFxChanged() { eqGraph.requestPaint(); }
+                            function onSelectedEqBandChanged() { eqGraph.requestPaint(); }
+                        }
                     }
                 }
 
-                Flickable {
+                // Every band stays instantiated during dragging. No Flickable stealing
+                // pointer gestures and no delegate recreation on gain updates.
+                Row {
+                    id: faderRow
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Style.sp(86)
-                    clip: true
-                    contentHeight: eqBands.implicitHeight
-                    boundsBehavior: Flickable.StopAtBounds
+                    Layout.preferredHeight: Math.max(Style.sp(34),
+                        Math.min(Style.sp(47), root.height * 0.19))
+                    spacing: 0
+
+                    Repeater {
+                        model: 20
+                        delegate: Item {
+                            id: fader
+                            required property int index
+                            readonly property var band: root.fx.eq.bands[fader.index]
+                            readonly property bool selected: root.selectedEqBand === fader.index
+                            readonly property real gain: fader.band ? fader.band.gain : 0
+                            width: faderRow.width / 20
+                            height: faderRow.height
+
+                            function gainAt(y) {
+                                if (gainTrack.height <= 0) return;
+                                const fraction = Math.max(0, Math.min(1, y / gainTrack.height));
+                                root.setEqGain(fader.index, 12 - 24 * fraction);
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: 1
+                                radius: Style.radius
+                                color: Tokens.paperLift
+                                opacity: fader.selected ? 1 : 0
+                            }
+                            Text {
+                                anchors.top: parent.top
+                                anchors.topMargin: Style.sp(1)
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                text: (fader.gain > 0 ? "+" : "")
+                                    + Number(fader.gain).toFixed(1)
+                                color: fader.selected ? Tokens.ink : Tokens.inkFaint
+                                font.family: Style.fontMono
+                                font.pixelSize: Style.fs.micro
+                                visible: fader.selected || Math.abs(fader.gain) > 0.05
+                            }
+                            Item {
+                                id: gainTrack
+                                anchors.top: parent.top
+                                anchors.topMargin: Style.sp(7)
+                                anchors.bottom: freqLabel.top
+                                anchors.bottomMargin: Style.sp(3)
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: Math.max(Style.sp(5), fader.width - Style.sp(1))
+
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 2
+                                    height: parent.height
+                                    radius: 1
+                                    color: Tokens.lineStrong
+                                }
+                                Rectangle {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    y: Math.min(parent.height / 2,
+                                        (12 - fader.gain) / 24 * parent.height)
+                                    width: 3
+                                    height: Math.max(0.5, Math.abs(parent.height / 2 -
+                                        (12 - fader.gain) / 24 * parent.height))
+                                    radius: 1
+                                    color: Style.accent
+                                    opacity: root.fx.eq.enabled ? 1 : 0.35
+                                }
+                                Rectangle {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    y: Math.max(0, Math.min(parent.height - height,
+                                        (12 - fader.gain) / 24 * parent.height - height / 2))
+                                    width: Math.max(Style.sp(3), fader.width - Style.sp(2))
+                                    height: Style.sp(1.3)
+                                    radius: height / 2
+                                    color: fader.selected ? Style.accent : Tokens.inkMuted
+                                }
+                                MouseArea {
+                                    id: gainMouse
+                                    anchors.fill: parent
+                                    preventStealing: true
+                                    cursorShape: Qt.SizeVerCursor
+                                    onPressed: (mouse) => {
+                                        root.selectedEqBand = fader.index;
+                                        fader.gainAt(mouse.y);
+                                    }
+                                    onPositionChanged: (mouse) => {
+                                        if (gainMouse.pressed) fader.gainAt(mouse.y);
+                                    }
+                                    onReleased: (mouse) => fader.gainAt(mouse.y)
+                                }
+                            }
+                            Text {
+                                id: freqLabel
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: Style.sp(1)
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                text: {
+                                    const hz = fader.band ? fader.band.frequency : 0;
+                                    return hz >= 1000
+                                        ? (hz / 1000).toFixed(hz % 1000 === 0 ? 0 : 1) + "k"
+                                        : String(Math.round(hz));
+                                }
+                                color: fader.selected ? Tokens.ink : Tokens.inkMuted
+                                font.family: Style.fontMono
+                                font.pixelSize: Style.fs.micro
+                                font.weight: fader.selected ? Font.DemiBold : Font.Normal
+                            }
+                        }
+                    }
+                }
+
+                // Precision controls are always scoped to the selected band.
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Style.sp(4)
                     ColumnLayout {
-                        id: eqBands
-                        width: parent.width
-                        spacing: Style.sp(2)
-                        Repeater {
-                            // Keep the 20 delegates alive while gain values change.
-                            model: 20
-                            delegate: RowLayout {
-                                id: bandRow
-                                required property int index
-                                readonly property var bandData: root.fx.eq.bands[bandRow.index]
-                                Layout.fillWidth: true
-                                spacing: Style.sp(2)
-                                Chip {
-                                    text: Math.round(bandRow.bandData.frequency) + " Hz"
-                                    active: root.selectedEqBand === bandRow.index
-                                    onClicked: root.selectedEqBand = bandRow.index
-                                }
-                                Slider {
-                                    Layout.fillWidth: true
-                                    from: -12
-                                    to: 12
-                                    value: bandRow.bandData.gain
-                                    onMoved: (v) => root.setEqGain(bandRow.index, v)
-                                    onCommitted: (v) => root.setEqGain(bandRow.index, v)
-                                }
-                                Text {
-                                    Layout.preferredWidth: Style.sp(14)
-                                    horizontalAlignment: Text.AlignRight
-                                    text: (bandRow.bandData.gain > 0 ? "+" : "")
-                                        + Number(bandRow.bandData.gain).toFixed(1) + " dB"
-                                    color: Tokens.inkMuted
-                                    font.family: Style.fontMono
-                                    font.pixelSize: Style.fs.xs
-                                }
-                            }
+                        Layout.preferredWidth: Style.sp(27)
+                        spacing: Style.sp(1)
+                        Text {
+                            text: "BAND " + (root.selectedEqBand + 1) + " / 20"
+                            color: Tokens.inkMuted
+                            font.family: Style.fontMono
+                            font.pixelSize: Style.fs.micro
+                        }
+                        Text {
+                            text: (root.activeBand().gain > 0 ? "+" : "")
+                                + Number(root.activeBand().gain).toFixed(1) + " dB"
+                            color: Tokens.ink
+                            font.family: Style.fontDisplay
+                            font.pixelSize: Style.fs.lg
                         }
                     }
-                }
-
-                Text {
-                    text: "BAND " + (root.selectedEqBand + 1) + " · FREQUENCY & Q"
-                    color: Tokens.inkMuted
-                    font.family: Style.fontMono
-                    font.pixelSize: Style.fs.micro
-                }
-                FxRow {
-                    label: "Frequency"
-                    value: Math.round(root.activeBand().frequency) + " Hz"
-                    from: 0
-                    to: 1
-                    val: Math.log(root.activeBand().frequency / 20) / Math.log(1000)
-                    onMoved: (v) => root.setEqFrequency(root.selectedEqBand, v)
-                }
-                FxRow {
-                    label: "Q (width)"
-                    value: Number(root.activeBand().q).toFixed(1)
-                    from: 0.3
-                    to: 10
-                    val: root.activeBand().q
-                    onMoved: (v) => root.setEqQ(root.selectedEqBand, v)
+                    FxRow {
+                        Layout.fillWidth: true
+                        label: "Frequency"
+                        naturalLabel: true
+                        value: Math.round(root.activeBand().frequency) + " Hz"
+                        from: 0
+                        to: 1
+                        val: Math.log(root.activeBand().frequency / 20) / Math.log(1000)
+                        onMoved: (v) => root.setEqFrequency(root.selectedEqBand, v)
+                    }
+                    FxRow {
+                        Layout.fillWidth: true
+                        label: "Q"
+                        naturalLabel: true
+                        value: Number(root.activeBand().q).toFixed(1)
+                        from: 0.3
+                        to: 10
+                        val: root.activeBand().q
+                        onMoved: (v) => root.setEqQ(root.selectedEqBand, v)
+                    }
                 }
             }
-
             Hairline { Layout.fillWidth: true }
 
             // presets
@@ -408,6 +543,7 @@ Item {
         id: r
         property string label: ""
         property string value: ""
+        property bool naturalLabel: false
         property real from: 0
         property real to: 1
         property real val: 0
@@ -417,7 +553,7 @@ Item {
         spacing: Style.sp(3)
 
         Text {
-            Layout.preferredWidth: Style.sp(16)
+            Layout.preferredWidth: r.naturalLabel ? implicitWidth : Style.sp(16)
             text: r.label
             color: Tokens.ink
             font.family: Style.fontUi

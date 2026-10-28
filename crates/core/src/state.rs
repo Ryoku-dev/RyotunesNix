@@ -413,6 +413,58 @@ impl QueueState {
     }
 }
 
+
+// Persist the complete effect chain, including the enabled flag and all 20 bands.
+// This is a private daemon setting, not a UI preference controlled by a webview.
+const AUDIO_FX_SETTING_KEY: &str = "audio_fx";
+
+fn validate_audio_fx(fx: &AudioFx) -> Result<(), String> {
+    if !fx.speed.is_finite() || !(0.25..=2.0).contains(&fx.speed) {
+        return Err("Tempo must be between 0.25× and 2.00×.".into());
+    }
+    if !(-12..=12).contains(&fx.semitones) {
+        return Err("Pitch must be between -12 and +12 semitones.".into());
+    }
+    if !fx.reverb.is_finite() || !(0.0..=1.0).contains(&fx.reverb) {
+        return Err("Reverb must be between 0 and 1.".into());
+    }
+    if !fx.bass_db.is_finite() || !(-6.0..=12.0).contains(&fx.bass_db) {
+        return Err("Bass must be between -6 and +12 dB.".into());
+    }
+    if !fx.width.is_finite() || !(0.0..=1.0).contains(&fx.width) {
+        return Err("Width must be between 0 and 1.".into());
+    }
+    for (index, band) in fx.eq.bands.iter().enumerate() {
+        if !band.frequency.is_finite() || !(20.0..=20000.0).contains(&band.frequency)
+            || !band.q.is_finite() || !(0.3..=10.0).contains(&band.q)
+            || !band.gain.is_finite() || !(-12.0..=12.0).contains(&band.gain)
+        {
+            return Err(format!("Invalid equalizer values in band {}.", index + 1));
+        }
+    }
+    Ok(())
+}
+
+// An invalid stored value must not prevent the daemon from starting or leave a
+// partially applied filter chain behind. The UI receives the validated mirror.
+fn read_saved_audio_fx(db: &Db) -> AudioFx {
+    let Some(raw) = db.get_setting(AUDIO_FX_SETTING_KEY) else {
+        return AudioFx::default();
+    };
+    let fx = match serde_json::from_str::<AudioFx>(&raw) {
+        Ok(fx) => fx,
+        Err(error) => {
+            tracing::warn!(%error, "Ignoring malformed saved audio effects");
+            return AudioFx::default();
+        }
+    };
+    if let Err(reason) = validate_audio_fx(&fx) {
+        tracing::warn!(%reason, "Ignoring out-of-range saved audio effects");
+        return AudioFx::default();
+    }
+    fx
+}
+
 impl AppState {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -478,6 +530,18 @@ impl AppState {
             Ok(json) => tidal_db.set_setting(TIDAL_AUTH_KEY, &json),
             Err(e) => tracing::error!(error = %e, "tidal: cannot serialize rotated auth"),
         });
+        let saved_audio_fx = read_saved_audio_fx(&db);
+        let live_audio_fx = if saved_audio_fx == AudioFx::default() {
+            saved_audio_fx
+        } else {
+            match player.set_fx(&saved_audio_fx) {
+                Ok(()) => saved_audio_fx,
+                Err(error) => {
+                    tracing::warn!(%error, "Could not restore saved audio effects");
+                    AudioFx::default()
+                }
+            }
+        };
         AppState {
             it,
             clients,
@@ -508,7 +572,7 @@ impl AppState {
             last_persisted_fingerprint: AtomicU64::new(0),
             stop_after_current: AtomicBool::new(false),
             low_resource_mode: AtomicBool::new(low_resource_mode),
-            audio_fx: parking_lot::RwLock::new(AudioFx::default()),
+            audio_fx: parking_lot::RwLock::new(live_audio_fx),
             spotify_stream: parking_lot::Mutex::new(None),
         }
     }
@@ -4316,31 +4380,12 @@ impl AppState {
     /// that must not trust a client), applied to the player as one `af` chain, then — only after a
     /// successful apply — stored and echoed to every client as `audio-fx` so all windows agree.
     pub fn set_audio_fx(&self, fx: AudioFx) -> Result<(), String> {
-        if !fx.speed.is_finite() || !(0.25..=2.0).contains(&fx.speed) {
-            return Err("Tempo must be between 0.25× and 2.00×.".into());
-        }
-        if !(-12..=12).contains(&fx.semitones) {
-            return Err("Pitch must be between -12 and +12 semitones.".into());
-        }
-        if !fx.reverb.is_finite() || !(0.0..=1.0).contains(&fx.reverb) {
-            return Err("Reverb must be between 0 and 1.".into());
-        }
-        if !fx.bass_db.is_finite() || !(-6.0..=12.0).contains(&fx.bass_db) {
-            return Err("Bass must be between -6 and +12 dB.".into());
-        }
-        if !fx.width.is_finite() || !(0.0..=1.0).contains(&fx.width) {
-            return Err("Width must be between 0 and 1.".into());
-        }
-        for (index, band) in fx.eq.bands.iter().enumerate() {
-            if !band.frequency.is_finite() || !(20.0..=20000.0).contains(&band.frequency)
-                || !band.q.is_finite() || !(0.3..=10.0).contains(&band.q)
-                || !band.gain.is_finite() || !(-12.0..=12.0).contains(&band.gain)
-            {
-                return Err(format!("Invalid equalizer values in band {}.", index + 1));
-            }
-        }
+        validate_audio_fx(&fx)?;
         self.player.set_fx(&fx).map_err(|e| e.to_string())?;
         *self.audio_fx.write() = fx;
+        if let Ok(serialized) = serde_json::to_string(&fx) {
+            self.db.set_setting(AUDIO_FX_SETTING_KEY, &serialized);
+        }
         self.emit("audio-fx", fx);
         Ok(())
     }
@@ -4356,6 +4401,26 @@ mod tests {
         validate_personal_blob, QueueState, RepeatMode, PERSONAL_JSON_KEY,
     };
     use crate::db::Db;
+
+    #[test]
+    fn audio_fx_persistence_round_trip_and_invalid_fallback() {
+        use super::{read_saved_audio_fx, AUDIO_FX_SETTING_KEY};
+        let db = Db::open(std::path::Path::new(":memory:")).unwrap();
+        let mut fx = player::AudioFx::default();
+        fx.eq.enabled = true;
+        fx.eq.bands[10].gain = 8.5;
+        fx.eq.bands[10].q = 1.6;
+        fx.eq.bands[10].frequency = 1150.0;
+        db.set_setting(AUDIO_FX_SETTING_KEY, &serde_json::to_string(&fx).unwrap());
+        assert_eq!(read_saved_audio_fx(&db), fx);
+
+        db.set_setting(AUDIO_FX_SETTING_KEY, "not json");
+        assert_eq!(read_saved_audio_fx(&db), player::AudioFx::default());
+
+        fx.eq.bands[10].gain = 30.0;
+        db.set_setting(AUDIO_FX_SETTING_KEY, &serde_json::to_string(&fx).unwrap());
+        assert_eq!(read_saved_audio_fx(&db), player::AudioFx::default());
+    }
 
     #[test]
     fn personal_round_trips_and_rejects_bad_blobs() {

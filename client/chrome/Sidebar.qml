@@ -93,25 +93,14 @@ Rectangle {
         Accessible.onPressAction: nr.activated()
         Keys.onReturnPressed: nr.activated()
         Keys.onSpacePressed: nr.activated()
-        border.width: activeFocus ? 2 : 0
-        border.color: Tokens.ink
+        border.width: activeFocus ? 2 : nr.current ? 1 : 0
+        border.color: activeFocus ? Tokens.ink : Tokens.lineSoft
 
         Layout.fillWidth: true
         implicitHeight: Style.sp(10)
         radius: Style.radius
-        color: nr.current ? Tokens.paperLift : navHover.hovered ? Tokens.tint5 : "transparent"
+        color: nr.current ? Tokens.tint10 : navHover.hovered ? Tokens.tint5 : "transparent"
         Behavior on color { ColorAnimation { duration: Style.motion.snap } }
-
-        // The 2 px accent left border of the active row (state, per the eye-candy brief).
-        Rectangle {
-            visible: nr.current
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            width: Style.sp(0.5)
-            height: parent.height - Style.sp(4)
-            radius: width / 2
-            color: Style.accent
-        }
 
         RowLayout {
             anchors.fill: parent
@@ -121,7 +110,7 @@ Rectangle {
             Icon {
                 name: nr.icon
                 size: Style.fs.lg
-                color: nr.current ? Tokens.ink : Tokens.inkMuted
+                color: nr.current ? Style.accent : Tokens.inkMuted
             }
             Text {
                 Layout.fillWidth: true
@@ -167,39 +156,23 @@ Rectangle {
         }
     }
 
-    // A section register: number, tracked mono micro label, a hairline to the right and (rich) seal.
+    // Small navigation headings establish hierarchy without numbering or ornamental rules.
     component SectionLabel: RowLayout {
         id: sl
-        property string num: ""
+        property string num: ""   // Kept for existing call-site compatibility.
         property string label: ""
-        property string seal: ""
+        property string seal: ""  // Kept for existing call-site compatibility.
         Layout.fillWidth: true
         Layout.leftMargin: Style.sp(3)
         Layout.rightMargin: Style.sp(3)
-        Layout.topMargin: Style.sp(3)
+        Layout.topMargin: Style.sp(4)
         Layout.bottomMargin: Style.sp(1)
-        spacing: Style.sp(2)
-        Text {
-            text: sl.num
-            color: Tokens.inkFaint
-            font.family: Style.fontMono
-            font.pixelSize: Style.fs.micro
-            font.letterSpacing: Style.trackMicro
-        }
         Text {
             text: sl.label
-            color: Tokens.inkMuted
+            color: Tokens.inkFaint
             font.family: Style.fontMono
             font.pixelSize: Style.fs.micro
             font.letterSpacing: Style.trackMicro
-        }
-        Hairline { Layout.fillWidth: true; soft: true }
-        Text {
-            visible: Style.decorRich && sl.seal !== ""
-            text: sl.seal
-            color: Tokens.inkFaint
-            font.family: Tokens.jp
-            font.pixelSize: Style.fs.sm
         }
     }
 
@@ -328,7 +301,7 @@ Rectangle {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.bottomMargin: Style.sp(2)
-                implicitHeight: Style.sp(14)
+                implicitHeight: Style.sp(12)
                 radius: Style.radiusCard
                 color: "transparent"
                 border.width: 1
@@ -367,15 +340,6 @@ Rectangle {
                             font.pixelSize: Style.fs.md
                             font.weight: Font.DemiBold
                             font.letterSpacing: 2
-                            elide: Text.ElideRight
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: "RYOKU // MUSIC"
-                            color: Tokens.inkFaint
-                            font.family: Style.fontMono
-                            font.pixelSize: Style.fs.micro
-                            font.letterSpacing: Style.trackMicro
                             elide: Text.ElideRight
                         }
                     }
@@ -429,10 +393,6 @@ Rectangle {
                         onActivated: if (root.activePage !== "downloads") Router.push("downloads")
                     }
 
-                    // SYSTEM
-                    SectionLabel { num: "03"; label: "SYSTEM"; seal: "設" }
-                    NavRow { label: "Settings"; icon: "settings"; kana: "設"; current: root.activePage === "settings"; onActivated: if (root.activePage !== "settings") Router.push("settings") }
-
                     // PLAYLISTS
                     SectionLabel { num: "04"; label: "PLAYLISTS"; seal: "列" }
                     Btn {
@@ -456,37 +416,14 @@ Rectangle {
                             }
                         }
                     }
+                    // SYSTEM
+                    SectionLabel { num: "03"; label: "SYSTEM"; seal: "設" }
+                    NavRow { label: "Settings"; icon: "settings"; kana: "設"; current: root.activePage === "settings"; onActivated: if (root.activePage !== "settings") Router.push("settings") }
+
                 }
             }
 
-            // --- LIVE register --------------------------------------------------------------
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: Style.sp(1)
-                spacing: Style.sp(2)
-                Text {
-                    text: "RYOKU // MUSIC"
-                    color: Tokens.inkFaint
-                    font.family: Style.fontMono
-                    font.pixelSize: Style.fs.micro
-                    font.letterSpacing: Style.trackMicro
-                }
-                Hairline { Layout.fillWidth: true; soft: true }
-                Rectangle {
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: Style.sp(2)
-                    Layout.preferredHeight: Style.sp(2)
-                    radius: Style.sp(1)
-                    color: Style.ambient ? Style.accent : Tokens.inkFaint
-                }
-                Text {
-                    text: "LIVE"
-                    color: Style.ambient ? Tokens.inkDim : Tokens.inkFaint
-                    font.family: Style.fontMono
-                    font.pixelSize: Style.fs.micro
-                    font.letterSpacing: Style.trackMicro
-                }
-            }
+
         }
     }
 }

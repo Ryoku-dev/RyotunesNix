@@ -20,7 +20,9 @@ Singleton {
 
     // Geometry (docs/superpowers/specs/2026-09-05-native-client-visual-design.md, section 2).
     readonly property int radius: Math.round(Skin.shape.radius * root.uiScale)        // controls
-    readonly property int radiusCard: Math.round(Skin.shape.radiusCard * root.uiScale)   // cards, hero art
+    // One restrained corner shape across controls, cards and Audiophile instruments.
+    // Preserve Style.radiusCard as an alias for existing components/skin consumers.
+    readonly property int radiusCard: root.radius   // matches Btn / IconButton
     readonly property int rowH: Math.round(52 * root.uiScale)         // table rows
     readonly property int ctlH: Math.round(36 * root.uiScale)         // buttons, fields
     readonly property int heroArt: Math.round(168 * root.uiScale)     // page hero art, card
