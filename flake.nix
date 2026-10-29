@@ -39,17 +39,30 @@
         inherit ryotunesUnwrapped;
         ryokuQml = ryoku.packages.${system}.ryoku-qml;
       };
+
+      # Optional local setup; never packages the external Soloist binary/key.
+      soloistSetup = pkgs.writeShellApplication {
+        name = "ryotunes-soloist-setup";
+        runtimeInputs = [ pkgs.coreutils pkgs.gnugrep pkgs.nix pkgs.systemd ];
+        text = builtins.readFile ./scripts/setup-soloist.sh;
+      };
     in
     {
       packages.${system} = {
         inherit ryotunes;
         ryotunes-unwrapped = ryotunesUnwrapped;
+        soloist-setup = soloistSetup;
         default = ryotunes;
       };
 
       apps.${system}.default = {
         type = "app";
         program = "${ryotunes}/bin/ryotunes";
+      };
+
+      apps.${system}.setup-soloist = {
+        type = "app";
+        program = "${soloistSetup}/bin/ryotunes-soloist-setup";
       };
     };
 }
