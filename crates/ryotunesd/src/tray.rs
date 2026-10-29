@@ -35,6 +35,7 @@ impl RyotunesTray {
         match id {
             "show" => show(&self.sink),
             "quit" => {
+                self.sink.emit("quit", Value::Null);
                 let _ = self.quit.send(());
             }
             other => {
