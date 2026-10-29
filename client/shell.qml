@@ -169,9 +169,14 @@ ShellRoot {
     }
     Connections {
         target: Daemon
+
         function onEvent(name: string, data: var): void {
-            if (name === "show")
+            if (name === "show") {
                 shellRoot.present();
+            } else if (name === "quit") {
+                Daemon.quitting = true;
+                Qt.quit();
+            }
         }
     }
     IpcHandler {
