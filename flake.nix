@@ -55,14 +55,16 @@
         default = ryotunes;
       };
 
-      apps.${system}.default = {
-        type = "app";
-        program = "${ryotunes}/bin/ryotunes";
-      };
+      apps.${system} = {
+        default = {
+          type = "app";
+          program = "${ryotunes}/bin/ryotunes";
+        };
 
-      apps.${system}.setup-soloist = {
-        type = "app";
-        program = "${soloistSetup}/bin/ryotunes-soloist-setup";
+        setup-soloist = {
+          type = "app";
+          program = "${soloistSetup}/bin/ryotunes-soloist-setup";
+        };
       };
     };
 }
