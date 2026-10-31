@@ -9,6 +9,8 @@
 
   <img src="docs/assets/homepage.png" width="100%" alt="" />
   <img width="1433" height="996" alt="image" src="https://github.com/user-attachments/assets/878bb917-3920-446e-80ad-f3578e667201" />
+  <img width="1433" height="996" alt="image" src="https://github.com/user-attachments/assets/d41d0858-525e-4c60-815f-c36cf7097303" />
+
 
   
 <details>
