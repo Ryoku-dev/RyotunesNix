@@ -23,7 +23,8 @@ Item {
     // window (>= 1400 px); hidden entirely below 1100 px, and yielded to the Now Playing stage.
     property bool panelOpen: app.width >= Style.sp(350)
     property string panelTab: "queue"
-    readonly property bool panelShown: app.panelOpen && app.width >= Style.sp(275) && !app.focusOpen
+    readonly property bool compactPanel: app.width < Style.sp(275)
+    readonly property bool panelShown: app.panelOpen && !app.compactPanel && !app.focusOpen
 
     // The navigation rail's collapse state, toggled from the title bar.
     property bool sidebarOpen: false
@@ -63,7 +64,7 @@ Item {
         app.panelOpen = true;
     }
     function panelToggleTab(tab) {
-        if (app.panelShown && app.panelTab === tab)
+        if (app.panelOpen && app.panelTab === tab)
             app.panelOpen = false;
         else
             app.panelOpenTab(tab);
@@ -240,6 +241,32 @@ Item {
                         Connections {
                             target: Playback
                             function onProviderChanged(): void { pageStack.reenter(); }
+                        }
+                    }
+                }
+
+                // Reuse the existing Queue and Lyrics panel on narrower windows.
+                Loader {
+                    anchors.fill: parent
+                    z: 20
+                    active: app.panelOpen && app.compactPanel
+                    sourceComponent: Item {
+                        Rectangle {
+                            anchors.fill: parent
+                            color: "#66000000"
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: app.panelOpen = false
+                            }
+                        }
+                        RightPanel {
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            anchors.right: parent.right
+                            open: true
+                            tab: app.panelTab
+                            onTabRequested: (tab) => app.panelOpenTab(tab)
+                            onCloseRequested: app.panelOpen = false
                         }
                     }
                 }

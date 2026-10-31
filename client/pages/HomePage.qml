@@ -337,7 +337,6 @@ Item {
                     visible: page.selected === ""
                     recents: page.recents
                     artists: page.famArtists
-                    listenAgain: page.listenAgain
                 }
 
                 // chip rail — a horizontal Flickable whose right edge fades into the paper (never a
@@ -554,6 +553,11 @@ Item {
                     }
                 }
 
+                HomePersonal {
+                    Layout.fillWidth: true
+                    visible: page.selected === ""
+                    listenAgain: page.listenAgain
+                }
 
                 // forgotten favourites (from the feed)
                 Shelf {
