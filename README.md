@@ -24,17 +24,6 @@
   </tr>
 </table>
 
-
-
-
-  
-<details>
-  <summary><strong>More interface previews</strong></summary>
-  <br>
-  <img src="https://github.com/user-attachments/assets/38228072-23e7-46a9-9af4-a79295b3bfc0" width="100%" alt="Ryotunes interface preview one" />
-  <img src="https://github.com/user-attachments/assets/4ed12a81-cc04-4352-9e98-cb63c3bb65b7" width="100%" alt="Ryotunes interface preview two" />
-</details>
-
 </div>
 
 <br>
