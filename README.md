@@ -7,10 +7,23 @@
 
   </p>
 
-  <img src="docs/assets/homepage.png" width="100%" alt="" />
-  <img width="1433" height="996" alt="image" src="https://github.com/user-attachments/assets/878bb917-3920-446e-80ad-f3578e667201" />
-  <img width="1433" height="996" alt="image" src="https://github.com/user-attachments/assets/d41d0858-525e-4c60-815f-c36cf7097303" />
-  <img width="1433" height="996" alt="image" src="https://github.com/user-attachments/assets/4c829b74-727d-4e7e-b2ba-6a5eae230ff1" />
+
+<img src="docs/assets/homepage.png" width="100%" alt="Ryotunes Home" />
+
+<table>
+  <tr>
+    <td width="33.33%">
+      <img src="https://github.com/user-attachments/assets/878bb917-3920-446e-80ad-f3578e667201" width="100%" alt="Ryotunes screenshot 1" />
+    </td>
+    <td width="33.33%">
+      <img src="https://github.com/user-attachments/assets/d41d0858-525e-4c60-815f-c36cf7097303" width="100%" alt="Ryotunes screenshot 2" />
+    </td>
+    <td width="33.33%">
+      <img src="https://github.com/user-attachments/assets/4c829b74-727d-4e7e-b2ba-6a5eae230ff1" width="100%" alt="Ryotunes screenshot 3" />
+    </td>
+  </tr>
+</table>
+
 
 
 
