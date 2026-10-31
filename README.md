@@ -20,7 +20,7 @@
 
   <p><sub>NixOS · x86_64-linux · Quickshell · Rust · GPL-3.0-or-later</sub></p>
 
-  <img src="docs/assets/ryotunes-surface.svg" width="100%" alt="Illustrated Ryotunes interface with library navigation, listening view and playback controls" />
+  <img src="docs/assets/homepage.svg" width="100%" alt="" />
 
   <sub>Illustrated interface preview. The appearance follows your chosen Ryoku palette and Ryotunes skin.</sub>
 </div>
