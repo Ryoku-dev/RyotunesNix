@@ -78,17 +78,12 @@ pub struct ParametricEq {
 impl Default for ParametricEq {
     fn default() -> Self {
         const HZ: [f64; 20] = [
-            32.0, 45.0, 64.0, 90.0, 125.0, 180.0, 250.0, 350.0, 500.0, 700.0,
-            1000.0, 1400.0, 2000.0, 2800.0, 4000.0, 5600.0, 8000.0, 11000.0,
-            15000.0, 19000.0,
+            32.0, 45.0, 64.0, 90.0, 125.0, 180.0, 250.0, 350.0, 500.0, 700.0, 1000.0, 1400.0,
+            2000.0, 2800.0, 4000.0, 5600.0, 8000.0, 11000.0, 15000.0, 19000.0,
         ];
         Self {
             enabled: false,
-            bands: std::array::from_fn(|i| EqBand {
-                frequency: HZ[i],
-                gain: 0.0,
-                q: 1.0,
-            }),
+            bands: std::array::from_fn(|i| EqBand { frequency: HZ[i], gain: 0.0, q: 1.0 }),
         }
     }
 }
@@ -118,7 +113,14 @@ impl Default for AudioFx {
     /// Everything off: speed 1×, no pitch shift, no effects — the same filterless path playback
     /// took before the Sound dialog existed.
     fn default() -> Self {
-        AudioFx { speed: 1.0, semitones: 0, reverb: 0.0, bass_db: 0.0, width: 0.0, eq: ParametricEq::default() }
+        AudioFx {
+            speed: 1.0,
+            semitones: 0,
+            reverb: 0.0,
+            bass_db: 0.0,
+            width: 0.0,
+            eq: ParametricEq::default(),
+        }
     }
 }
 
@@ -679,8 +681,15 @@ mod tests {
         // (set_property would error otherwise — this is the only proof aecho/bass/stereowiden
         // parse on this build).
         p.set_gain(None).unwrap();
-        p.set_fx(&AudioFx { speed: 1.0, semitones: 0, reverb: 1.0, bass_db: 8.0, width: 0.8, eq: Default::default() })
-            .unwrap();
+        p.set_fx(&AudioFx {
+            speed: 1.0,
+            semitones: 0,
+            reverb: 1.0,
+            bass_db: 8.0,
+            width: 0.8,
+            eq: Default::default(),
+        })
+        .unwrap();
         let live = af();
         assert!(live.contains("aecho"), "reverb missing from live chain: {live}");
         assert!(live.contains("bass"), "bass missing from live chain: {live}");
