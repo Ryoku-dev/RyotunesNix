@@ -1,60 +1,135 @@
-
 <div align="center">
- 
-# Ryotunes for NixOS
+  <img src="src-tauri/icons/icon.png" width="88" alt="Ryotunes icon" />
 
-**A Ryoku native desktop music player with native audio playback, live shell theming, and a UI that knows when to disappear remade specifically for NixOS compatability.**
+  <h1>RyotunesNix</h1>
 
-[Download](https://github.com/ryoku-dev/ryotunes/releases/latest) · [Architecture](docs/ARCHITECTURE.md) · [Install](docs/INSTALL-ARCH.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Ryoku NixOS](https://github.com/ryoku-dev/ryoku-on-nixos)
+  <p><strong>The native music app for Ryoku on NixOS.</strong></p>
+
+  <p>
+    <a href="#getting-started">Get started</a> ·
+    <a href="#features">Features</a> ·
+    <a href="#spotify-soloist">Spotify</a> ·
+    <a href="docs/SKINS.md">Skins</a> ·
+    <a href="CONTRIBUTING.md">Contribute</a>
+  </p>
+
+  <img src="docs/assets/homepage.png" width="100%" alt="" />
+
 
 </div>
 
-<br />
+<br>
 
-<img width="1168" height="692" alt="image" src="https://github.com/user-attachments/assets/38228072-23e7-46a9-9af4-a79295b3bfc0" />
-<img width="1168" height="692" alt="image" src="https://github.com/user-attachments/assets/4ed12a81-cc04-4352-9e98-cb63c3bb65b7" />
+## Made for the desktop you actually use
 
+**RyotunesNix** brings [Ryotunes](https://github.com/Ryoku-dev/ryotunes) to [Ryoku on NixOS](https://github.com/Ryoku-dev/Ryoku-on-NixOS), with a **native Quickshell frontend** and a separate Rust playback daemon. Music and media state belong to the backend, not to a window you have to leave open.
 
-<p align="center"><sub>Repository artwork based on the live v2 Home layout and Ryoku visual language.</sub></p>
+This repository is the **NixOS-focused edition**, not the legacy Tauri desktop launcher. Running `ryotunes` from this flake starts the native QML interface.
 
----
-
-## Built for Ryoku on NixOS, not just compatible with it
-
-Ryotunes is a Linux first desktop music application shaped around the way **Ryoku** actually behaves.
-
-The primary interface is Quickshell / QML, connected to the Rust ryotunesd systemd daemon. Rust and libmpv manages playback, media state and provider integrations independently. The older Svelte/ WebKitGTK adaption remains a separate legacy launch mode as a fallback.
+## Features
 
 <table>
-<tr>
-<td width="33%" valign="top">
+  <tr>
+    <td width="50%" valign="top">
+      <strong>Native interface</strong><br>
+      Quickshell and QML surfaces designed to sit naturally alongside the Ryoku desktop.
+    </td>
+    <td width="50%" valign="top">
+      <strong>Playback that lives beyond the window</strong><br>
+      A Rust <code>ryotunesd</code> daemon keeps playback and media state independent of the frontend.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <strong>Music from multiple sources</strong><br>
+      Explore your library, artists, albums, playlists and supported music providers from one place.
+    </td>
+    <td valign="top">
+      <strong>Audio Lab</strong><br>
+      Audio controls, visualisers and listening tools integrated into the native player.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <strong>Skins that belong to Ryoku</strong><br>
+      Follow the system palette or choose a skin. Community skins can be managed through RyoStore.
+    </td>
+    <td valign="top">
+      <strong>Downloads and personal listening</strong><br>
+      Save music locally, manage playlists and browse listening views without leaving the app.
+    </td>
+  </tr>
+</table>
 
----
+<details>
+  <summary><strong>More interface previews</strong></summary>
+  <br>
+  <img src="https://github.com/user-attachments/assets/38228072-23e7-46a9-9af4-a79295b3bfc0" width="100%" alt="Ryotunes interface preview one" />
+  <img src="https://github.com/user-attachments/assets/4ed12a81-cc04-4352-9e98-cb63c3bb65b7" width="100%" alt="Ryotunes interface preview two" />
+</details>
 
-### Skins
+## Getting started
 
-Ryotunes have community made themes within the Ryostore, downloading the themes from the Ryostore adds it to your Settings > Appearance section.
+### With Ryoku on NixOS
 
----
+RyotunesNix is integrated into the [Ryoku on NixOS](https://github.com/Ryoku-dev/Ryoku-on-NixOS) package bundle. On a supported Ryoku installation, launch it with:
 
-## Contributing
+```bash
+ryotunes
+```
 
-Start with **[CONTRIBUTING.md](CONTRIBUTING.md)**. Changes touching playback lifecycle, theme integration, Home rendering, background behavior or replacement packaging deserve explicit regression testing.
+Ryoku manages the installed player and its socket-activated daemon as part of the desktop configuration.
 
----
+### Using the flake directly
 
-## Upstream, license & independence
+To try the native application from this repository:
 
-Ryotunes is a **GPL-3.0-or-later modified work derived from [SimoHypers/LiMusic](https://github.com/SimoHypers/limusic)**.
+```bash
+nix run github:Ryoku-dev/RyotunesNix
+```
 
-The project retains transparent upstream attribution while pursuing its own Ryoku specific product direction, interface, lifecycle, performance architecture and packaging model. See **[UPSTREAM.md](UPSTREAM.md)** for the detailed note.
+Or build the package:
 
-Distributed under **[GPL-3.0-or-later](LICENSE)**.
+```bash
+nix build github:Ryoku-dev/RyotunesNix#ryotunes
+```
 
----
+The flake currently targets **x86_64-linux**. A standalone flake invocation supplies the player but **does not automatically install the Ryoku NixOS user services**. The native client needs a running `ryotunesd` daemon. For the fully managed desktop experience, use the Ryoku on NixOS integration.
+
+## Spotify Soloist
+
+Spotify playback through Soloist uses an **optional external backend**. RyotunesNix includes the local bridge, but it does not bundle the Soloist executable or any account credentials.
+
+After obtaining your own permitted Soloist executable and API key, run the one-time setup:
+
+```bash
+nix run 'github:Ryoku-dev/RyotunesNix#setup-soloist' -- /absolute/path/to/soloist
+```
+
+The setup creates an opt-in systemd user service that starts Soloist on login. Your key stays on your machine, outside the Nix store. A running Soloist backend and `ryotunesd` are both required for this playback path.
+
+See **[Spotify Soloist setup and troubleshooting](docs/spotify-soloist.md)** for the full instructions and security notes.
+
+## Inside the project
+
+| Path | Purpose |
+| --- | --- |
+| [`client/`](client/) | Native Quickshell UI and playback surfaces |
+| [`crates/`](crates/) | Rust playback core, daemon, CLI and protocols |
+| [`nix/`](nix/) | NixOS package and native launcher wrapper |
+| [`skins/`](skins/) | Bundled visual skins and skin schema |
+| [`docs/`](docs/) | Design, architecture and troubleshooting references |
+
+**Want to customise it?** Start with the [skin guide](docs/SKINS.md) and [design language](docs/DESIGN.md). For source changes, read [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Credits and licence
+
+RyotunesNix is maintained as the NixOS-focused edition of [Ryotunes](https://github.com/Ryoku-dev/ryotunes), a modified work derived from [LiMusic](https://github.com/SimoHypers/limusic).
+
+Licensed under **[GPL-3.0-or-later](LICENSE)**. See [UPSTREAM.md](UPSTREAM.md) for attribution and project history.
 
 <div align="center">
-
-### Music, for the Ryoku desktop.
-
+  <br>
+  <sub>緑 · Ryoku</sub>
+  <p><strong>Keep the music. Lose the clutter.</strong></p>
 </div>
