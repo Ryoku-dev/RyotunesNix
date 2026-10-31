@@ -3,12 +3,7 @@
 
   <h1>RyotunesNix</h1>
 
-  <p><strong>Music, shaped for the Ryoku desktop.</strong></p>
-
-  <p>
-    A native Quickshell music player for NixOS.<br>
-    Built with Rust, QML and the Ryoku design language.
-  </p>
+  <p><strong>The native music app for Ryoku on NixOS.</strong></p>
 
   <p>
     <a href="#getting-started">Get started</a> ·
@@ -18,11 +13,9 @@
     <a href="CONTRIBUTING.md">Contribute</a>
   </p>
 
-  <p><sub>NixOS · x86_64-linux · Quickshell · Rust · GPL-3.0-or-later</sub></p>
-
   <img src="docs/assets/homepage.png" width="100%" alt="" />
 
-  <sub>Illustrated interface preview. The appearance follows your chosen Ryoku palette and Ryotunes skin.</sub>
+
 </div>
 
 <br>
