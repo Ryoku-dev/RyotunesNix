@@ -5,12 +5,6 @@
 
   <p><strong>The native music app for Ryoku on NixOS.</strong></p>
 
-  <p>
-    <a href="#getting-started">Get started</a> ·
-    <a href="#features">Features</a> ·
-    <a href="#spotify-soloist">Spotify</a> ·
-    <a href="docs/SKINS.md">Skins</a> ·
-    <a href="CONTRIBUTING.md">Contribute</a>
   </p>
 
   <img src="docs/assets/homepage.png" width="100%" alt="" />
@@ -20,43 +14,31 @@
 
 <br>
 
-## Made for the desktop you actually use
+## Made specifically for NixOS
 
-**RyotunesNix** brings [Ryotunes](https://github.com/Ryoku-dev/ryotunes) to [Ryoku on NixOS](https://github.com/Ryoku-dev/Ryoku-on-NixOS), with a **native Quickshell frontend** and a separate Rust playback daemon. Music and media state belong to the backend, not to a window you have to leave open.
-
-This repository is the **NixOS-focused edition**, not the legacy Tauri desktop launcher. Running `ryotunes` from this flake starts the native QML interface.
+**RyotunesNix** brings [Ryotunes](https://github.com/Ryoku-dev/ryotunes) to [Ryoku on NixOS](https://github.com/Ryoku-dev/Ryoku-on-NixOS), completely building it from the ground up to natively support NixOS first. The entire application is written in rust and QML, the old version using Tauri + WebKitGTK is still avaliable as a fallback.
 
 ## Features
 
 <table>
   <tr>
-    <td width="50%" valign="top">
-      <strong>Native interface</strong><br>
-      Quickshell and QML surfaces designed to sit naturally alongside the Ryoku desktop.
+    <td valign="top">
+      <strong>Multiple Providers</strong><br>
+      Ryotunes includes streaming from Spotify, YT Music, Souncloud, Tidal and music from your local library, Ryotunes also includes a dedicated installer to install all your music and keep it local.
     </td>
-    <td width="50%" valign="top">
-      <strong>Playback that lives beyond the window</strong><br>
-      A Rust <code>ryotunesd</code> daemon keeps playback and media state independent of the frontend.
-    </td>
+    <td valign="top">
+      <strong>Audiophile Mode</strong><br>
+      Audiophile Mode adds a 20 band parametric EQ with frequency and gain sliders, it also includes a bar and curve cava spectrum, oscilloscope and a vectorscope and a dedicated focus mode with live lyrics.
+    </td> 
   </tr>
   <tr>
     <td valign="top">
-      <strong>Music from multiple sources</strong><br>
-      Explore your library, artists, albums, playlists and supported music providers from one place.
+      <strong>Customisability</strong><br>
+      Ryotunes comes bundles with 12 default themes and a Matugen theme, the Ryostore contains 20+ more additional themes made by the community and fully compatable with Ryotunes.
     </td>
     <td valign="top">
-      <strong>Audio Lab</strong><br>
-      Audio controls, visualisers and listening tools integrated into the native player.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <strong>Skins that belong to Ryoku</strong><br>
-      Follow the system palette or choose a skin. Community skins can be managed through RyoStore.
-    </td>
-    <td valign="top">
-      <strong>Downloads and personal listening</strong><br>
-      Save music locally, manage playlists and browse listening views without leaving the app.
+      <strong>Discord RPC</strong><br>
+      Ryotunes comes with a fully customisible and native Discord Rich Presence automatically detecting Discord/ Vesktop and adding it to your ptofile automatically when listening.
     </td>
   </tr>
 </table>
