@@ -82,8 +82,6 @@ Rectangle {
             onClicked: Router.push("downloads")
         }
 
-        Item { Layout.fillHeight: true }
-
         IconButton {
             Layout.alignment: Qt.AlignHCenter
             icon: "settings"
@@ -91,5 +89,7 @@ Rectangle {
             active: Router.current && Router.current.page === "settings"
             onClicked: Router.push("settings")
         }
+
+        Item { Layout.fillHeight: true }
     }
 }

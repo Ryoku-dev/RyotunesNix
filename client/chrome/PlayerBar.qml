@@ -12,20 +12,20 @@ import "../lib/ids.js" as Ids
 // it sits at the window's midline whatever the side content does. It holds no truth: every control is
 // a Playback method (a daemon call) and every readout is Playback state, save the two sanctioned
 // optimisms — the held seek thumb (Playback.seekDrag) and the volume slider while dragged
-// (Playback.volDrag). Queue / Lyrics select App's right panel; expand raises the Now Playing stage;
+// (Playback.volDrag). Queue / Lyrics select App's right panel; expand raises Focus Mode;
 // the Sound dialog opens from the tools. The wave is gone: the seek is a hairline with an accent fill.
 Rectangle {
     id: root
 
     signal toggleQueue()
     signal toggleLyrics()
-    signal toggleNowPlaying()
+    signal toggleFocus()
     signal soundClicked()
 
     // App state, one-way in: the right panel's open flag and active tab, and the stage's open flag.
     property bool panelOpen: false
     property string panelTab: "queue"
-    property bool nowPlayingOpen: false
+    property bool focusOpen: false
 
     // Volume level to return to when un-muting (mute is just volume 0).
     property int preMute: 100
@@ -210,8 +210,9 @@ Rectangle {
                 icon: "expand"
                 iconSize: Style.fs.lg
                 diameter: Style.sp(8)
-                active: root.nowPlayingOpen
-                onClicked: root.toggleNowPlaying()
+                active: root.focusOpen
+                tip: "Focus Mode"
+                onClicked: root.toggleFocus()
             }
             IconButton {
                 icon: "queue"

@@ -52,18 +52,10 @@ Item {
         anchors.bottomMargin: Style.sp(7)
         spacing: Style.sp(5)
 
-        // The normal title bar and sidebar are hidden by App while Focus Mode is open.
         RowLayout {
             Layout.fillWidth: true
             spacing: Style.sp(3)
 
-            Text {
-                text: "力  RYOTUNES"
-                color: Tokens.inkMuted
-                font.family: Style.fontMono
-                font.pixelSize: Style.fs.xs
-                font.letterSpacing: Style.trackMicro
-            }
             Item { Layout.fillWidth: true }
             IconButton {
                 icon: "close"
@@ -76,7 +68,6 @@ Item {
             }
         }
 
-        Hairline { Layout.fillWidth: true }
 
         RowLayout {
             id: listeningArea
@@ -194,7 +185,6 @@ Item {
             }
         }
 
-        Hairline { Layout.fillWidth: true }
 
         // One transport. The daemon remains the only authority for playback and volume.
         ColumnLayout {

@@ -457,7 +457,7 @@ Item {
                     Layout.bottomMargin: Style.sp(2)
                     spacing: 1
                     Text {
-                        text: "力 // SETTINGS"
+                        text: "Settings"
                         color: Tokens.inkDim
                         font.family: Style.fontUi
                         font.pixelSize: Style.fs.md
@@ -465,7 +465,7 @@ Item {
                         font.letterSpacing: 1
                     }
                     Text {
-                        text: "RYOTUNES // 設定"
+                        text: "RYOTUNES"
                         color: Tokens.inkFaint
                         font.family: Style.fontMono
                         font.pixelSize: Style.fs.xs
@@ -499,7 +499,7 @@ Item {
                             spacing: Style.sp(2)
                             Text {
                                 Layout.fillWidth: true
-                                text: (railItem.current ? "// " : "") + railItem.modelData.l
+                                text: railItem.modelData.l
                                 color: railItem.current ? Tokens.inkOnBone : Tokens.inkDim
                                 font.family: Style.fontUi
                                 font.pixelSize: Style.fs.md
@@ -1634,7 +1634,7 @@ Item {
                     SectionHeading { Layout.fillWidth: true; Layout.topMargin: Style.sp(3); title: "Made by"; mark: "人" }
                     Text {
                         Layout.fillWidth: true
-                        text: "Ryotunes is built by two developers. Open their GitHub profiles:"
+                        text: "Made possible by the Ryotunes developers and contributors:"
                         color: Tokens.inkMuted; font.family: Style.fontUi; font.pixelSize: Style.fs.sm; wrapMode: Text.WordWrap
                     }
                     RowLayout {
@@ -1642,6 +1642,7 @@ Item {
                         spacing: Style.sp(2)
                         Btn { text: "ashmitvoid"; icon: "link"; onClicked: page.openUrl("https://github.com/ashmitvoid") }
                         Btn { text: "neur0map"; icon: "link"; onClicked: page.openUrl("https://github.com/neur0map") }
+                        Btn { text: "aethctl"; icon: "link"; onClicked: page.openUrl("https://github.com/aethctl") }
                     }
 
                     // --- open source ---

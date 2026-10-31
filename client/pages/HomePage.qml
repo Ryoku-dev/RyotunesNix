@@ -336,6 +336,7 @@ Item {
                     Layout.fillWidth: true
                     visible: page.selected === ""
                     recents: page.recents
+                    artists: page.famArtists
                 }
 
                 // chip rail — a horizontal Flickable whose right edge fades into the paper (never a
@@ -554,11 +555,7 @@ Item {
 
                 HomePersonal {
                     Layout.fillWidth: true
-                    // The recents / familiar artists are YouTube Music history. The merged
-                    // home always carries the YouTube spine, so they always belong; a mood
-                    // chip filter narrows the YouTube feed alone, so they step aside then.
                     visible: page.selected === ""
-                    artists: page.famArtists
                     listenAgain: page.listenAgain
                 }
 
