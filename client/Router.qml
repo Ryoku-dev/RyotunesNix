@@ -11,6 +11,7 @@ Singleton {
     property var stack: [{ page: "home", params: ({}), scrollY: 0 }]
     readonly property var current: root.stack.length ? root.stack[root.stack.length - 1] : null
     readonly property bool canGoBack: root.stack.length > 1
+    signal navigationRequested()
 
     function entry(page, params) {
         return { page: page, params: params === undefined ? ({}) : params, scrollY: 0 };
@@ -20,6 +21,7 @@ Singleton {
         var s = root.stack.slice();
         s.push(root.entry(page, params));
         root.stack = s;
+        root.navigationRequested();
     }
 
     function pop() {
@@ -27,12 +29,14 @@ Singleton {
         var s = root.stack.slice();
         s.pop();
         root.stack = s;
+        root.navigationRequested();
     }
 
     function replace(page, params) {
         var s = root.stack.slice();
         s[s.length - 1] = root.entry(page, params);
         root.stack = s;
+        root.navigationRequested();
     }
 
     // Persist the live scroll position of the current entry (called as a page scrolls) so it can be

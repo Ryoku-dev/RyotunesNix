@@ -18,18 +18,12 @@ Item {
     id: app
     anchors.fill: parent
 
-    // The Now Playing stage's coupling with the transport. Exactly one of queue/lyrics is the active
-    // tab while the stage is open; opening a tab opens it and closing clears all three. NowPlaying
-    // reads these and asks for changes through tabRequested/closeRequested.
-    property bool queueOpen: false
-    property bool lyricsOpen: false
-    property bool nowPlayingOpen: false
-
+    // The full-screen expand action goes straight to Focus Mode.
     // The persistent right panel (Queue | Lyrics) and its active tab. Open by default on a wide
     // window (>= 1400 px); hidden entirely below 1100 px, and yielded to the Now Playing stage.
     property bool panelOpen: app.width >= Style.sp(350)
     property string panelTab: "queue"
-    readonly property bool panelShown: app.panelOpen && app.width >= Style.sp(275) && !app.nowPlayingOpen
+    readonly property bool panelShown: app.panelOpen && app.width >= Style.sp(275) && !app.focusOpen
 
     // The navigation rail's collapse state, toggled from the title bar.
     property bool sidebarOpen: false
@@ -57,33 +51,10 @@ Item {
     // snapshot-blurred while one of these is open (spec 9).
     readonly property bool modalOpen: app.soundOpen || palette.open || listenTogether.open
 
-    // --- Now Playing stage helpers ----------------------------------------------------------
-    function npOpenTab(tab) {
-        app.nowPlayingOpen = true;
-        app.queueOpen = tab === "queue";
-        app.lyricsOpen = tab === "lyrics";
-    }
     function openFocus() {
         if (!Playback.now) return;
         app.soundOpen = false;
         app.focusOpen = true;
-    }
-    function npClose() {
-        app.nowPlayingOpen = false;
-        app.queueOpen = false;
-        app.lyricsOpen = false;
-    }
-    function npToggleTab(tab) {
-        if (app.nowPlayingOpen && ((tab === "queue" && app.queueOpen) || (tab === "lyrics" && app.lyricsOpen)))
-            app.npClose();
-        else
-            app.npOpenTab(tab);
-    }
-    function npToggle() {
-        if (app.nowPlayingOpen)
-            app.npClose();
-        else
-            app.npOpenTab(app.lyricsOpen ? "lyrics" : "queue");
     }
 
     // --- right panel helpers ----------------------------------------------------------------
@@ -110,7 +81,10 @@ Item {
 
     Connections {
         target: Playback
-        function onNowPlayingRequested(tab: string): void { app.npOpenTab(tab); }
+        function onNowPlayingRequested(tab: string): void {
+            if (tab === "queue") app.panelOpenTab("queue");
+            else app.openFocus();
+        }
         function onSoundRequested(): void { app.soundOpen = true; }
     }
 
@@ -270,19 +244,6 @@ Item {
                     }
                 }
 
-                NowPlaying {
-                    anchors.fill: parent
-                    // The stage shares the content region below the Audio Lab.
-                    anchors.topMargin: audioLabStrip.visible
-                        ? audioLabStrip.height + Style.sp(5) : 0
-                    nowPlayingOpen: app.nowPlayingOpen
-                    queueOpen: app.queueOpen
-                    lyricsOpen: app.lyricsOpen
-                    onTabRequested: (tab) => app.npOpenTab(tab)
-                    onCloseRequested: app.npClose()
-                    onFocusRequested: app.openFocus()
-                }
-
                 // Audiophile Mode: the original wide, low-profile spectrum layout,
                 // now fixed to the top of the shared content surface on every route.
                 // No floating overlay, bottom docking, or debug metadata heading.
@@ -321,10 +282,10 @@ Item {
             visible: !!Playback.now
             panelOpen: app.panelShown
             panelTab: app.panelTab
-            nowPlayingOpen: app.nowPlayingOpen
+            focusOpen: app.focusOpen
             onToggleQueue: app.panelToggleTab("queue")
             onToggleLyrics: app.panelToggleTab("lyrics")
-            onToggleNowPlaying: app.npToggle()
+            onToggleFocus: app.openFocus()
             onSoundClicked: app.soundOpen = true
         }
     }
@@ -360,19 +321,33 @@ Item {
         }
     }
 
-    // Ryotunes Focus Mode (Riff-inspired interaction, Ryotunes-native surface).
-    // A separate listening surface, created only when requested; the daemon and
-    // existing Now Playing state are preserved when the user exits.
+    // Focus occupies the content width, leaving native icon navigation usable.
     Loader {
         id: focusLoader
         anchors.fill: parent
+        anchors.leftMargin: Style.sp(14)
         active: app.focusOpen
         source: "chrome/FocusMode.qml"
+    }
+    CompactNav {
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        visible: app.focusOpen
+        z: 12
+        onExpandRequested: {
+            app.focusOpen = false;
+            app.sidebarOpen = true;
+        }
     }
     Connections {
         target: focusLoader.item
         ignoreUnknownSignals: true
         function onCloseRequested(): void { app.focusOpen = false; }
+    }
+    Connections {
+        target: Router
+        function onNavigationRequested(): void { app.focusOpen = false; }
     }
     Connections {
         target: Playback
@@ -410,11 +385,10 @@ Item {
     Shortcut {
         sequences: ["Escape"]
         context: Qt.WindowShortcut
-        enabled: palette.open || app.focusOpen || app.nowPlayingOpen
+        enabled: palette.open || app.focusOpen
         onActivated: {
             if (palette.open) palette.open = false;
             else if (app.focusOpen) app.focusOpen = false;
-            else app.npClose();
         }
     }
 

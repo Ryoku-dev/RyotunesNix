@@ -393,8 +393,10 @@ Rectangle {
                         onActivated: if (root.activePage !== "downloads") Router.push("downloads")
                     }
 
+                    NavRow { label: "Settings"; icon: "settings"; kana: "設"; current: root.activePage === "settings"; onActivated: if (root.activePage !== "settings") Router.push("settings") }
+
                     // PLAYLISTS
-                    SectionLabel { num: "04"; label: "PLAYLISTS"; seal: "列" }
+                    SectionLabel { num: "03"; label: "PLAYLISTS"; seal: "列" }
                     Btn {
                         Layout.fillWidth: true
                         Layout.topMargin: Style.sp(1)
@@ -416,9 +418,6 @@ Rectangle {
                             }
                         }
                     }
-                    // SYSTEM
-                    SectionLabel { num: "03"; label: "SYSTEM"; seal: "設" }
-                    NavRow { label: "Settings"; icon: "settings"; kana: "設"; current: root.activePage === "settings"; onActivated: if (root.activePage !== "settings") Router.push("settings") }
 
                 }
             }
