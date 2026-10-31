@@ -18,6 +18,22 @@ jobs:
 
       - uses: cachix/install-nix-action@v31
 
+      - name: Verify cache credentials
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          CACHE: ${{ vars.CACHIX_CACHE }}
+          TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+        run: |
+          test -n "$CACHE" || { printf 'Missing CACHIX_CACHE variable\n' >&2; exit 1; }
+          test -n "$TOKEN" || { printf 'Missing CACHIX_AUTH_TOKEN secret\n' >&2; exit 1; }
+
+      - name: Configure Cachix publisher
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ vars.CACHIX_CACHE }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
       - name: Validate flake
         run: nix flake show
 
