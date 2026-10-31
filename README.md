@@ -1,6 +1,6 @@
 
 <div align="center">
-
+ 
 <img src="docs/assets/ryotunes-hero.svg" alt="Ryotunes — Music, shaped for Ryoku" width="100%" />
 
 <br />
@@ -25,7 +25,8 @@
 
 <br />
 
-<img width="3369" height="2017" alt="2026_08_27_02_44_21_screenshot" src="https://github.com/user-attachments/assets/44aaf6cc-f88e-4c1d-97ff-c44e45d4c72b" width="100%"/>
+<img width="3369" height="2017" alt="2026_08_27_02_44_21_screenshot" src="<img width="1168" height="692" alt="image" src="https://github.com/user-attachments/assets/38228072-23e7-46a9-9af4-a79295b3bfc0" />
+" width="100%"/>
 
 <p align="center"><sub>Repository artwork based on the live v2 Home layout and Ryoku visual language.</sub></p>
 
