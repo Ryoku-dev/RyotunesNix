@@ -1,31 +1,18 @@
 
 <div align="center">
  
-<img src="docs/assets/ryotunes-hero.svg" alt="Ryotunes — Music, shaped for Ryoku" width="100%" />
+# Ryotunes for NixOS
 
-<br />
+**A Ryoku native desktop music player with native audio playback, live shell theming, and a UI that knows when to disappear remade specifically for NixOS compatability.**
 
-<a href="https://github.com/ryoku-dev/ryotunes/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/ryoku-dev/ryotunes?style=flat-square&label=release&color=9a604b"></a>
-<a href="LICENSE"><img alt="GPL-3.0-or-later" src="https://img.shields.io/github/license/ryoku-dev/ryotunes?style=flat-square&color=7f9b8d"></a>
-<img alt="Linux x86_64" src="https://img.shields.io/badge/Linux-x86__64-8996a8?style=flat-square&logo=linux&logoColor=white">
-<img alt="Ryoku native" src="https://img.shields.io/badge/Ryoku-native-6f7f76?style=flat-square">
-<img alt="Audio only" src="https://img.shields.io/badge/playback-audio%20only-a86d58?style=flat-square">
-<br />
-<img alt="Rust" src="https://img.shields.io/badge/Rust-native%20core-2d3136?style=flat-square&logo=rust&logoColor=white">
-<img alt="Quickshell / QML" src="https://img.shields.io/badge/UI-Quickshell%20%2F%20QML-2d3136?style=flat-square">
-<img alt="libmpv" src="https://img.shields.io/badge/audio-libmpv-2d3136?style=flat-square">
-
-<br /><br />
-
-**A Ryoku-native desktop music player with native audio playback, live shell theming, and a UI that knows when to disappear.**
-
-[Download](https://github.com/ryoku-dev/ryotunes/releases/latest) · [Architecture](docs/ARCHITECTURE.md) · [Install](docs/INSTALL-ARCH.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Ryoku](https://github.com/ryoku-dev/ryoku-arch)
+[Download](https://github.com/ryoku-dev/ryotunes/releases/latest) · [Architecture](docs/ARCHITECTURE.md) · [Install](docs/INSTALL-ARCH.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Ryoku NixOS](https://github.com/ryoku-dev/ryoku-on-nixos)
 
 </div>
 
 <br />
 
 <img width="1168" height="692" alt="image" src="https://github.com/user-attachments/assets/38228072-23e7-46a9-9af4-a79295b3bfc0" />
+<img width="1168" height="692" alt="image" src="https://github.com/user-attachments/assets/4ed12a81-cc04-4352-9e98-cb63c3bb65b7" />
 
 
 <p align="center"><sub>Repository artwork based on the live v2 Home layout and Ryoku visual language.</sub></p>
