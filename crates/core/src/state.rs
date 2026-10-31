@@ -413,7 +413,6 @@ impl QueueState {
     }
 }
 
-
 // Persist the complete effect chain, including the enabled flag and all 20 bands.
 // This is a private daemon setting, not a UI preference controlled by a webview.
 const AUDIO_FX_SETTING_KEY: &str = "audio_fx";
@@ -435,9 +434,12 @@ fn validate_audio_fx(fx: &AudioFx) -> Result<(), String> {
         return Err("Width must be between 0 and 1.".into());
     }
     for (index, band) in fx.eq.bands.iter().enumerate() {
-        if !band.frequency.is_finite() || !(20.0..=20000.0).contains(&band.frequency)
-            || !band.q.is_finite() || !(0.3..=10.0).contains(&band.q)
-            || !band.gain.is_finite() || !(-12.0..=12.0).contains(&band.gain)
+        if !band.frequency.is_finite()
+            || !(20.0..=20000.0).contains(&band.frequency)
+            || !band.q.is_finite()
+            || !(0.3..=10.0).contains(&band.q)
+            || !band.gain.is_finite()
+            || !(-12.0..=12.0).contains(&band.gain)
         {
             return Err(format!("Invalid equalizer values in band {}.", index + 1));
         }
