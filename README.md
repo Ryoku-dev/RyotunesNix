@@ -8,6 +8,8 @@
   </p>
 
   <img src="docs/assets/homepage.png" width="100%" alt="" />
+  <img width="1433" height="996" alt="image" src="https://github.com/user-attachments/assets/878bb917-3920-446e-80ad-f3578e667201" />
+
   
 <details>
   <summary><strong>More interface previews</strong></summary>
