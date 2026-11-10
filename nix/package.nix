@@ -4,6 +4,7 @@
   pkg-config,
   wrapGAppsHook3,
   glib,
+  glib-networking,
   gtk3,
   gdk-pixbuf,
   cairo,
@@ -37,6 +38,7 @@ rustPlatform.buildRustPackage rec {
 
   buildInputs = [
     glib
+    glib-networking
     gtk3
     gdk-pixbuf
     cairo
